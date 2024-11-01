@@ -9,3 +9,4 @@ Angol típusnevek, magyar dokumentáció? Majd doxygennel generálni, labvezzel 
 excalidraw workspace-en van lerajzolva amit le kell rajzolni, nem rakom fel githubra, mert minek,úgy is csak főgépen dolgozok rajta
 
 Valami valami
+Valai2 alai2

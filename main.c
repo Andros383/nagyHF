@@ -6,6 +6,7 @@
 
 #include "debugmalloc.h"
 int main(int argc, char *argv[]) {
+    printf("testteszt");
     /* SDL inicializálása és ablak megnyitása */
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
         SDL_Log("Nem indithato az SDL: %s", SDL_GetError());

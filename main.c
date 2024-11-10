@@ -5,71 +5,38 @@
 #include <stdlib.h>
 
 #include "debugmalloc.h"
+#include "game_screen.h"
+#include "sdl_setup.h"
+
+const int WINDOW_WIDTH = 1000;
+const int WINDOW_HEIGHT = 1000;
+
 int main(int argc, char *argv[]) {
-    printf("testteszt");
-    /* SDL inicializálása és ablak megnyitása */
-    if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
-        SDL_Log("Nem indithato az SDL: %s", SDL_GetError());
-        exit(1);
-    }
-    SDL_Window *window = SDL_CreateWindow("SDL peldaprogram", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 440, 360, 0);
-    if (window == NULL) {
-        SDL_Log("Nem hozhato letre az ablak: %s", SDL_GetError());
-        exit(1);
-    }
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
-    if (renderer == NULL) {
-        SDL_Log("Nem hozhato letre a megjelenito: %s", SDL_GetError());
-        exit(1);
-    }
-    SDL_RenderClear(renderer);
+    // TODO kivenni, meg nézni, megy-e
 
-    /* rajzok */
-    int x, y, r;
-    r = 50;
+    // sdl setup
+    SDL_Window *window;
+    SDL_Renderer *renderer;
+    sdl_init(WINDOW_WIDTH, WINDOW_HEIGHT, &window, &renderer);
 
-    /* karika */
-    x = 100;
-    y = 100;
-    circleRGBA(renderer, x, y, r, 255, 0, 0, 255);
-    circleRGBA(renderer, x + r, y, r, 0, 255, 0, 255);
-    circleRGBA(renderer, x + r * cos(3.1415 / 3), y - r * sin(3.1415 / 3), r, 0, 0, 255, 255);
-
-    /* antialias karika */
-    x = 280;
-    y = 100;
-    aacircleRGBA(renderer, x, y, r, 255, 0, 0, 255);
-    aacircleRGBA(renderer, x + r, y, r, 0, 255, 0, 255);
-    aacircleRGBA(renderer, x + r * cos(3.1415 / 3), y - r * sin(3.1415 / 3), r, 0, 0, 255, 255);
-
-    /* kitoltott kor */
-    x = 100;
-    y = 280;
-    filledCircleRGBA(renderer, x, y, r, 255, 0, 0, 255);
-    filledCircleRGBA(renderer, x + r, y, r, 0, 255, 0, 255);
-    filledCircleRGBA(renderer, x + r * cos(3.1415 / 3), y - r * sin(3.1415 / 3), r, 0, 0, 255, 255);
-
-    /* attetszo kor */
-    x = 280;
-    y = 280;
-    filledCircleRGBA(renderer, x, y, r, 255, 0, 0, 96);
-    filledCircleRGBA(renderer, x + r, y, r, 0, 255, 0, 96);
-    filledCircleRGBA(renderer, x + r * cos(3.1415 / 3), y - r * sin(3.1415 / 3), r, 0, 0, 255, 96);
-
-    /* szoveg */
-    stringRGBA(renderer, 110, 350, "Kilepeshez: piros x az ablakon", 255, 255, 255, 255);
+    // első indításkor alap setup a 6x12-es board
+    game_setup(renderer, 6, 12);
 
     /* az elvegzett rajzolasok a kepernyore */
-    SDL_RenderPresent(renderer);
+    // SDL_RenderPresent(renderer);
 
-    /* varunk a kilepesre */
-    SDL_Event ev;
-    while (SDL_WaitEvent(&ev) && ev.type != SDL_QUIT) {
-        /* SDL_RenderPresent(renderer); - MacOS Mojave esetén */
-    }
+    // /* varunk a kilepesre */
+    // SDL_Event ev;
+    // while (SDL_WaitEvent(&ev) && ev.type != SDL_QUIT) {
+    //     /* SDL_RenderPresent(renderer); - MacOS Mojave esetén */
+    // }
 
-    /* ablak bezarasa */
+    // /* ablak bezarasa */
+    // SDL_Quit();
+
+    // TODO ide kell ez vagy sem?
     SDL_Quit();
 
+    printf("Sikeres kilepes.\nAzert -1 a return code, mert a loop valaszto fuggveny nincs kesz.");
     return 0;
 }

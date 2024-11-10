@@ -1,6 +1,7 @@
 {
 	"files.associations": {
 		"sdl.h": "c",
-		"debugmalloc.h": "c"
+		"debugmalloc.h": "c",
+		"stdlib.h": "c"
 	}
 }

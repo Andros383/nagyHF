@@ -6,132 +6,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "game_render.h"
 #include "game_screen.h"
-// TODO bevinni az sdl-es import file-ba, mint globál konstans
-const int WINDOW_WIDTH_2 = 1000;
-const int WINDOW_HEIGHT_2 = 1000;
 
-// TODO ez dinamikus legyen majd?
-const int BLOCK_SIZE = 70;
-// megjegyzés: y trükkös, felülről számolja az SDL
+// TODO egybevenni a stallokat?
+// csak egy stall counter lenne
 
-// TODO átvinni game_render.c-be
+//  mindegyik függvény változtatja a játékállapotot így vagy úgy, azaz pointerként veszik át a game_state-et
+//  TODO ezeket okosabban? talán meg lehetne oldani a mozgásokat
 
-// TODO ezt lehetne jobban?
-// vagy akár rosszabban: belerakni a block_size-ot, hogy lehessen dinamikusan állítani
-
-// alapvető infók amik általában kellenek minden komponens rajzolásához
-typedef struct CommonRenderData {
-    int board_width, board_height;
-    int board_width_px, board_height_px;
-    int origin_x, origin_y;
-} CommonRenderData;
-
-// TODO egy blokk renderelését kiszervezni függvénybe? vagy az sok
-
-// lerajzol a táblára egy blokkot x y cellába
-static void render_block(SDL_Renderer *renderer, CommonRenderData rd, Block block, int x, int y) {
-    Block current_block = block;
-    // ha empty, nincs renderelés
-    if (current_block == EMPTY) return;
-
-    int r = 0, g = 0, b = 0;
-    switch (block) {
-        case RED:
-            r = 255;
-            break;
-
-        case GREEN:
-            g = 255;
-            break;
-
-        case BLUE:
-            b = 255;
-            break;
-
-        case YELLOW:
-            r = 255;
-            g = 255;
-            break;
-
-        default:
-            // mindent megnéztünk
-            printf("Invalid block state in 'render_block'!");
-            break;
-    }
-    int circle_middle_x = (rd.origin_x + BLOCK_SIZE / 2) + BLOCK_SIZE * x;
-    int circle_middle_y = (rd.origin_y - BLOCK_SIZE / 2) - BLOCK_SIZE * y;
-    int radius = (BLOCK_SIZE / 2) * 0.9;  // TODO wild casting kiszedése
-    filledCircleRGBA(renderer, circle_middle_x, circle_middle_y, radius, r, g, b, 255);
-}
-
-// kirajzolja a táblát háttérrel, rácsvonalakkal, és a már lerakott részekkel
-static void render_board(SDL_Renderer *renderer, CommonRenderData rd, Block **board) {
-    // tábla háttere
-    boxRGBA(renderer, rd.origin_x, rd.origin_y, rd.origin_x + rd.board_width_px, rd.origin_y - rd.board_height_px, 127, 127, 127, 255);
-
-    // tényleges tartalom kirajzolása
-    for (int x = 0; x < rd.board_width; x++) {
-        for (int y = 0; y < rd.board_height; y++) {
-            render_block(renderer, rd, board[x][y], x, y);
-        }
-    }
-
-    // rács kirajzolása
-    for (int x = 1; x <= rd.board_width - 1; x++) {
-        lineRGBA(renderer, rd.origin_x + BLOCK_SIZE * x, rd.origin_y, rd.origin_x + BLOCK_SIZE * x, rd.origin_y - rd.board_height_px, 0, 0, 0, 127);
-    }
-
-    for (int y = 1; y <= rd.board_height - 1; y++) {
-        lineRGBA(renderer, rd.origin_x, rd.origin_y - BLOCK_SIZE * y, rd.origin_x + rd.board_width_px, rd.origin_y - BLOCK_SIZE * y, 0, 0, 0, 127);
-    }
-
-    // TODO összekötéseket a lerakott részek közt
-}
-
-// TODO GameState miért pointer? a többinek annak kéne lennie? Érték szerint fine átvenni, kb 30 byte
-// Bár itt ezt változtatjuk
-// A rajzolóknál érthető az érték szerinti, mert nem változtatjuk
-static void render_game(SDL_Renderer *renderer, GameState *game_state) {
-    // TODO nem mindig kell újrarajzolni mindent. De majd csak akkor, ha optimalizálok?
-    SDL_RenderClear(renderer);
-
-    CommonRenderData render_data;
-    // tábla szélessége
-    render_data.board_width = game_state->board_width;
-    render_data.board_height = game_state->board_height;
-
-    // tábla szélessége pixelben
-    render_data.board_width_px = render_data.board_width * BLOCK_SIZE;
-    render_data.board_height_px = render_data.board_height * BLOCK_SIZE;
-
-    // tábla bal alsó sarkának koordinátái pixelben
-    render_data.origin_x = WINDOW_HEIGHT_2 / 2 - render_data.board_width_px / 2;
-    render_data.origin_y = WINDOW_HEIGHT_2 / 2 + render_data.board_height_px / 2;
-
-    // fehár háttér
-    boxRGBA(renderer, 0, 0, WINDOW_WIDTH_2, WINDOW_HEIGHT_2, 255, 255, 255, 255);
-
-    // tábla kirajzolása: csak a már lerakott részek
-    render_board(renderer, render_data, game_state->board);
-
-    // TODO score, chain, stb kirajzolása
-
-    // jelenleg aktív rész kirajzolása
-    Piece ac = game_state->active_piece;
-    render_block(renderer, render_data, ac.block1, ac.x1, ac.y1);
-    render_block(renderer, render_data, ac.block2, ac.x2, ac.y2);
-
-    SDL_RenderPresent(renderer);
-}
-//*******************
-//* ^ game_render.c *
-//* v game_logic.c  *
-//*******************
-
-// mindegyik függvény változtatja a játékállapotot így vagy úgy, azaz pointerként veszik át a game_state-et
-// TODO ezeket okosabban? talán meg lehetne oldani a mozgásokat
-
+// első híváskor visited-nek üresnek kell lennie
+// amikor visszatér, a visitedben benne lesz, hogy melyik cellák vannak az adott csoportban
 // visszaadja, hogy innen indulva a bejáratlan részeken mekkora csoportosulásban van a szín
 int group_size(GameState *game_state, bool **visited, Block searched_color, int x, int y) {
     // szebb ha itt veszem fel a szélcheckeket
@@ -159,7 +44,7 @@ int group_size(GameState *game_state, bool **visited, Block searched_color, int 
 
 // TODO kéne neki gravot hívnia utána?
 //  törli a négy vagy nagyobb csoportokat, és visszaadja, volt-e törlés
-bool pop_groups(GameState *game_state) {
+bool pop_groups(SDL_Renderer *renderer, GameState *game_state) {
     // TODO mit kéne, ha nem tudja lefoglalni?
     // nem tudom szépen visszaadni értékként, hogy volt-e pop és hogy sikeres volt a memóriafoglalás
 
@@ -172,7 +57,7 @@ bool pop_groups(GameState *game_state) {
 
     // TODO kieemelni a lefoglalást?
 
-    // megnézte-e már a bejárás
+    // temp változó, járt-e már ott a bejárás
     bool **visited = (bool **)malloc(width * sizeof(bool *));
     for (int i = 0; i < game_state->board_width; i++) {
         visited[i] = (bool *)malloc(height);
@@ -181,6 +66,19 @@ bool pop_groups(GameState *game_state) {
     for (int x = 0; x < width; x++) {
         for (int y = 0; y < height; y++) {
             visited[x][y] = false;
+        }
+    }
+
+    // egy lépés végén a törlendő cellák
+    // animáció miatt kell lementeni
+    bool **clear = (bool **)malloc(width * sizeof(bool *));
+    for (int i = 0; i < game_state->board_width; i++) {
+        clear[i] = (bool *)malloc(height);
+    }
+
+    for (int x = 0; x < width; x++) {
+        for (int y = 0; y < height; y++) {
+            clear[x][y] = false;
         }
     }
 
@@ -200,9 +98,9 @@ bool pop_groups(GameState *game_state) {
                 // ebben az állapotban a visited pontosan tartalmazza, hogy melyik cellák vannak benne a vizsgált csoportban
                 for (int x = 0; x < width; x++) {
                     for (int y = 0; y < height; y++) {
-                        // ha a csoportméret elég nagy, törli az elemeket amiket bejárt
+                        // ha a csoportméret elég nagy, felírja, miket kell törölnie
                         if (size >= 4 && visited[x][y]) {
-                            game_state->board[x][y] = EMPTY;
+                            clear[x][y] = true;
                             pop = true;
                         }
                         // egyben nullázza is a tömböt
@@ -213,10 +111,42 @@ bool pop_groups(GameState *game_state) {
         }
     }
 
+    // TODO átgondolni ez jó-e, hogy csak itt lerenderelem
+    // elméletben nem tud visszamenni a main event loopba, azaz tuti nem fog közben mozogni a rész
+    render_game(renderer, game_state);
+
+    if (pop) {
+        for (int pop_anim_count = 0; pop_anim_count < 3; pop_anim_count++) {
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    if (clear[x][y]) {
+                        render_animation_block(renderer, game_state, x, y, (1.0 / 3.0) * pop_anim_count);
+                    }
+                }
+            }
+            SDL_RenderPresent(renderer);
+            SDL_Delay(200);
+        }
+
+        // az elemek tényleges törlése a tábláról
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                if (clear[x][y]) {
+                    game_state->board[x][y] = EMPTY;
+                }
+            }
+        }
+    }
+
     for (int x = 0; x < width; x++) {
         free(visited[x]);
     }
     free(visited);
+
+    for (int x = 0; x < width; x++) {
+        free(clear[x]);
+    }
+    free(clear);
 
     return pop;
 }
@@ -242,7 +172,10 @@ void gravity(GameState *game_state) {
 }
 
 // ténylegesen a táblára helyezi az aktív részt, majd rendezi a táblát (grav, chain)
-void lock_active_piece(GameState *game_state) {
+void lock_active_piece(SDL_Renderer *renderer, GameState *game_state, int *nat_grav, int *upkick, bool *enable_events) {
+    // gravitáció kikapcsolása, mert időbe kerül, mire az animáció lejátszódik
+    *enable_events = false;
+
     // TODO ezek a sorok nagyon hosszúak
     // aktív rész lerakása a táblára
     game_state->board[game_state->active_piece.x1][game_state->active_piece.y1] = game_state->active_piece.block1;
@@ -255,6 +188,10 @@ void lock_active_piece(GameState *game_state) {
     game_state->active_piece.x2 = game_state->board_width / 2;
     game_state->active_piece.y1 = game_state->board_height - 1;
     game_state->active_piece.y2 = game_state->board_height - 2;
+
+    // részre vonatkozó anti-stalling számlálók törlése
+    *nat_grav = 0;
+    *upkick = 0;
 
     // TODO rövidebbre a sorokat?
     //  be tud-e jönni az aktív rész
@@ -273,13 +210,21 @@ void lock_active_piece(GameState *game_state) {
 
     // pop_groups igaz, ha törlődött csoport ebben a lépésben
     // ha törlődött, akkor gravitációt aktiváljuk, majd megint töröljük a csoportokat
-    while (pop_groups(game_state)) {
+    while (pop_groups(renderer, game_state)) {
         gravity(game_state);
     }
+
+    // TODO rendszerezni a pontkezelő függvényeket?
+    // talán saját fájlba a pont, sajátba a game_state, sajátba a render függvényeket
+    // és akkor egymást hivogatják
+    game_state->score_data.placed_pieces++;
+
+    // gravitáció visszakapcsolása
+    *enable_events = true;
 }
 
 // az aktív részt letolja, amennyire tudja, majd le is rakja
-void hard_drop(GameState *game_state) {
+void hard_drop(SDL_Renderer *renderer, GameState *game_state, int *nat_grav, int *upkick, bool *enable_events) {
     Piece piece = game_state->active_piece;
 
     bool successful_downpush = true;
@@ -303,10 +248,12 @@ void hard_drop(GameState *game_state) {
     game_state->active_piece.y2 = piece.y2;
 
     // TODO lockolni a részt
-    lock_active_piece(game_state);
+    lock_active_piece(renderer, game_state, nat_grav, upkick, enable_events);
 }
+
 // úgy változtatja a játékállást, hogy az aktív rész eggyel lefele mozogjon
-void soft_drop(GameState *game_state) {
+// visszaadja, hogy lejjebb mozgott-e a rész
+bool soft_drop(GameState *game_state) {
     // TODO b1 és b2 elhagyása?
 
     Piece piece = game_state->active_piece;
@@ -321,9 +268,23 @@ void soft_drop(GameState *game_state) {
         if (b1 && b2) {
             game_state->active_piece.y1--;
             game_state->active_piece.y2--;
+            return true;
         }
     }
     // TODO lock, de nem biztos hogy ez fogja vezérelni, inkább majd az auto grav meg a hard drop
+    return false;
+}
+// TODO talán a nat_grav és az upkicket berakni a game_state-be, vagy csak flag structot létrehozni?
+void natural_gravity(SDL_Renderer *renderer, GameState *game_state, int *nat_grav, int *upkick, bool *enable_events) {
+    // lejjebb mozgatja a részt
+    if (!soft_drop(game_state)) {
+        // ha nem mozgott lejjebb, növeli a számlálót
+        if (*nat_grav >= 3) {
+            // ha elérte a határt, lehelyezi
+            lock_active_piece(renderer, game_state, nat_grav, upkick, enable_events);
+        }
+        (*nat_grav)++;
+    }
 }
 void move_left(GameState *game_state) {
     Piece piece = game_state->active_piece;
@@ -357,9 +318,10 @@ void move_right(GameState *game_state) {
 
 // TODO itt sok a másolt kód, más-más néven van ugyan az elmentve, de legalább érthető?
 
-void rotate_cw(GameState *game_state) {
+void rotate_cw(SDL_Renderer *renderer, GameState *game_state, int *nat_grav, int *upkick) {
     Piece piece = game_state->active_piece;
-    // ha kész van a rész forgatásával return-ol
+    // hogy ne legyen más meghívva, a piece forgatása után returnol
+    // TODO inkább case?
 
     // TODO szétszedni több függvényre?
     //  TODO kick limit
@@ -442,7 +404,6 @@ void rotate_cw(GameState *game_state) {
     }
     // jobbra -> felfele tud rúgni
     if (piece.x1 > piece.x2) {
-        // TODO felrugásokra limit
         int hova_x = piece.x1 - 1;
         int hova_y = piece.y1 - 1;
 
@@ -456,11 +417,17 @@ void rotate_cw(GameState *game_state) {
         }
 
         if (kick) {
-            // felfele mindig tud rúgni
-            game_state->active_piece.x1 = piece.x1 - 1;
-            game_state->active_piece.y1 = piece.y1;
-            game_state->active_piece.x2 = piece.x2;
-            game_state->active_piece.y2 = piece.y2 + 1;
+            // ha még nem rúgott túl sokszor fel
+            if (*upkick < 3) {
+                // számolja a felrúgásokat
+                (*upkick)++;
+
+                // felfele mindig tud rúgni
+                game_state->active_piece.x1 = piece.x1 - 1;
+                game_state->active_piece.y1 = piece.y1;
+                game_state->active_piece.x2 = piece.x2;
+                game_state->active_piece.y2 = piece.y2 + 1;
+            }
         } else {
             // nem kell rúgnia
             game_state->active_piece.x1 = hova_x;
@@ -469,10 +436,10 @@ void rotate_cw(GameState *game_state) {
 
         return;
     }
-    // TODO ezt kivenni
+    // TODO ezt kivenni, jelezni
     printf("Ide nem kéne eljutni.");
 }
-void rotate_ccw(GameState *game_state) {
+void rotate_ccw(SDL_Renderer *renderer, GameState *game_state, int *nat_grav, int *upkick) {
     Piece piece = game_state->active_piece;
     // ha kész van a rész forgatásával return-ol
 
@@ -512,8 +479,6 @@ void rotate_ccw(GameState *game_state) {
     }
     // balra -> felfele tud rúgni
     if (piece.x1 < piece.x2) {
-        // TODO kick limit
-
         // TODO felrugásokra limit
         int hova_x = piece.x1 + 1;
         int hova_y = piece.y1 - 1;
@@ -529,11 +494,18 @@ void rotate_ccw(GameState *game_state) {
         }
 
         if (kick) {
-            // felfele mindig tud rúgni
-            game_state->active_piece.x1 = piece.x1 + 1;
-            game_state->active_piece.y1 = piece.y1;
-            game_state->active_piece.x2 = piece.x2;
-            game_state->active_piece.y2 = piece.y2 + 1;
+            // ha még nem rúgott túl sokszor fel
+            if (*upkick < 3) {
+                // számolja a felrúgásokat
+                (*upkick)++;
+
+                // felfele mindig tud rúgni
+                game_state->active_piece.x1 = piece.x1 + 1;
+                game_state->active_piece.y1 = piece.y1;
+                game_state->active_piece.x2 = piece.x2;
+                game_state->active_piece.y2 = piece.y2 + 1;
+            }
+
         } else {
             // nem kell rúgnia
             game_state->active_piece.x1 = hova_x;
@@ -585,43 +557,75 @@ void rotate_ccw(GameState *game_state) {
     printf("Ide nem kéne eljutni.");
 }
 
-int game_loop(SDL_Renderer *renderer, GameState *game_state) {
-    // TODO ezt kitörölni
-    // tábla manuális állítása
-    // game_state->board[3][3] = GREEN;
+Uint32 gravity_timer(Uint32 ms, void *param) {
+    SDL_Event ev;
+    ev.type = SDL_USEREVENT;
+    SDL_PushEvent(&ev);
+    return ms; /* ujabb varakozas */
+}
 
+int game_loop(SDL_Renderer *renderer, GameState *game_state) {
     // TODO mindenféle dolog, pl ne mindig rajzolja újra, számolja hogy mikor megy jobbra, stb
 
     // controls temporary le vannak írva a controls.md-be, nem lesz váloztatható, csak megjegyezzem
+    // TODO am ez 0, ha nem sikerült
+    // szóval ezt is hibakezelni?
+
+    // TODO csak akkor, ha még nem nyomtak le irányítási gombot
+    //  50 fps, de lehetne timer indítgatásokkal is
+    // gravitáció időzítője
+    SDL_TimerID id = SDL_AddTimer(20, gravity_timer, NULL);
+
+    // hányszor volt gravity_event
+    // egyenlőre így lesz, maradékkal nézve hogy ritkítsam
+    // de lehet hogy majd csak mindig új időzítőket indítok pieceszám váltásnál
+    int timer_counter = 0;
+
+    // fogad-e bemenetek a loop
+    bool enable_events = true;
+
     SDL_Event event;
+
+    // TODO mindkettő végére egy count?
+    //  hányszor került feljebb a rész forgatás által
+    int upkick = 0;
+    // hányszor próbálta már a gravitáció lerakni a részt
+    int nat_grav = 0;
+
     // kilépés mindig megy
     while (SDL_WaitEvent(&event) && event.type != SDL_QUIT) {
+        // ha nem fogad bemenetet, eldobja, várja a következőt
+        if (!enable_events) continue;
         switch (event.type) {
             case SDL_KEYDOWN:
                 switch (event.key.keysym.sym)
 
                 {
                     case SDLK_w:
-                        hard_drop(game_state);
+                        hard_drop(renderer, game_state, &nat_grav, &upkick, &enable_events);
                         break;
                     case SDLK_a:
                         move_left(game_state);
                         break;
                     case SDLK_s:
                         // TODO talán ide kéne, hogy a grav ne hasson ilyenkor azonnal
+                        // mmint ha a soft drop-ot megnyomtam, akkor ne rakhassa egyből lejjebb a gravitáció
+                        // de ha nagyon szívás megoldani kihagyom
+                        // amikor fontos, már nem vehető észre, amikor észrevehető, nem baj
                         soft_drop(game_state);
                         break;
                     case SDLK_d:
                         move_right(game_state);
                         break;
                     case SDLK_i:
-                        rotate_cw(game_state);
+                        rotate_cw(renderer, game_state, &nat_grav, &upkick);
                         break;
                     case SDLK_o:
-                        rotate_ccw(game_state);
+                        rotate_ccw(renderer, game_state, &nat_grav, &upkick);
                         break;
                     case SDLK_ESCAPE:
                         // TODO újraindítani a játékot
+                        break;
 #define GYORSKILEP
 #ifdef GYORSKILEP
                         SDL_Quit();
@@ -637,6 +641,15 @@ int game_loop(SDL_Renderer *renderer, GameState *game_state) {
             case SDL_KEYUP:
                 // TODO állítani hogy fel van-oe emelve
                 break;
+            case SDL_USEREVENT:
+
+                if (timer_counter % 50 == 0) {
+                    natural_gravity(renderer, game_state, &nat_grav, &upkick, &enable_events);
+                    timer_counter = 0;
+                }
+                timer_counter++;
+
+                break;
             default:
                 break;
         }
@@ -644,6 +657,9 @@ int game_loop(SDL_Renderer *renderer, GameState *game_state) {
         // am de
         render_game(renderer, game_state);
     }
+    // időzítő leállítása
+    SDL_RemoveTimer(id);
+
     // TODO ez csak placeholder return code
     return -1;
 }

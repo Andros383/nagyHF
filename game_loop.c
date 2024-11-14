@@ -145,20 +145,20 @@ int group_size(GameState *game_state, bool **visited, Block searched_color, int 
     // már megnéztük
     if (visited[x][y]) return 0;
     // 1-ről kezd, mert magát beleszámolja
-    int sum = 1;
+    int size = 1;
     visited[x][y] = true;
 
     // mind a négy irányban szétnéz
-    sum += group_size(game_state, visited, searched_color, x, y + 1);
-    sum += group_size(game_state, visited, searched_color, x + 1, y);
-    sum += group_size(game_state, visited, searched_color, x, y - 1);
-    sum += group_size(game_state, visited, searched_color, x - 1, y);
+    size += group_size(game_state, visited, searched_color, x, y + 1);
+    size += group_size(game_state, visited, searched_color, x + 1, y);
+    size += group_size(game_state, visited, searched_color, x, y - 1);
+    size += group_size(game_state, visited, searched_color, x - 1, y);
 
-    return sum;
+    return size;
 }
 
 // TODO kéne neki gravot hívnia utána?
-//  törli a négy vagy nagyobb csoportokat, törli őket és visszaadja, volt-e törlés
+//  törli a négy vagy nagyobb csoportokat, és visszaadja, volt-e törlés
 bool pop_groups(GameState *game_state) {
     // TODO mit kéne, ha nem tudja lefoglalni?
     // nem tudom szépen visszaadni értékként, hogy volt-e pop és hogy sikeres volt a memóriafoglalás
@@ -221,6 +221,7 @@ bool pop_groups(GameState *game_state) {
     return pop;
 }
 // TODO végigstaticozni
+// Leejti a táblán a lebegő részeket
 void gravity(GameState *game_state) {
     // oszloponként végigmenve
     for (int x = 0; x < game_state->board_width; x++) {
@@ -242,6 +243,7 @@ void gravity(GameState *game_state) {
 
 // ténylegesen a táblára helyezi az aktív részt, majd rendezi a táblát (grav, chain)
 void lock_active_piece(GameState *game_state) {
+    // TODO ezek a sorok nagyon hosszúak
     // aktív rész lerakása a táblára
     game_state->board[game_state->active_piece.x1][game_state->active_piece.y1] = game_state->active_piece.block1;
     game_state->board[game_state->active_piece.x2][game_state->active_piece.y2] = game_state->active_piece.block2;
@@ -586,7 +588,7 @@ void rotate_ccw(GameState *game_state) {
 int game_loop(SDL_Renderer *renderer, GameState *game_state) {
     // TODO ezt kitörölni
     // tábla manuális állítása
-    game_state->board[3][3] = GREEN;
+    // game_state->board[3][3] = GREEN;
 
     // TODO mindenféle dolog, pl ne mindig rajzolja újra, számolja hogy mikor megy jobbra, stb
 

@@ -4,7 +4,6 @@
 #include <SDL2/SDL2_gfxPrimitives.h>
 
 // source : infoc
-// inicializálja az sdl-t, beállítja a
 /* ablak megnyitasa */
 void sdl_init(int szeles, int magas, SDL_Window **pwindow, SDL_Renderer **prenderer) {
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {

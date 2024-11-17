@@ -2,10 +2,11 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfxPrimitives.h>
+#include <SDL2/SDL_ttf.h>
 
 // source : infoc
 /* ablak megnyitasa */
-void sdl_init(int szeles, int magas, SDL_Window **pwindow, SDL_Renderer **prenderer) {
+void sdl_init(int szeles, int magas, SDL_Window **pwindow, SDL_Renderer **prenderer, TTF_Font **font) {
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
         SDL_Log("Nem indithato az SDL: %s", SDL_GetError());
         exit(1);
@@ -20,6 +21,12 @@ void sdl_init(int szeles, int magas, SDL_Window **pwindow, SDL_Renderer **prende
         SDL_Log("Nem hozhato letre a megjelenito: %s", SDL_GetError());
         exit(1);
     }
+
+    // szöveg kiírásához előkészület
+    TTF_Init();
+    *font = TTF_OpenFont("fonts/CONSOLAB.TTF", 32);
+
+    // TODO render törlése, lehet nem kell majd
     SDL_RenderClear(renderer);
 
     *pwindow = window;

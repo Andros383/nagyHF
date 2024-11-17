@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfxPrimitives.h>
+#include <SDL2/SDL_ttf.h>
 #include <math.h>
 #include <stdio.h>  //TODO ezt kivenni, mert nem fog a konzolra írni
 #include <stdlib.h>
@@ -8,7 +9,7 @@
 #include "game_screen.h"
 #include "sdl_setup.h"
 
-const int WINDOW_WIDTH = 1000;
+const int WINDOW_WIDTH = 1600;
 const int WINDOW_HEIGHT = 1000;
 
 int main(int argc, char *argv[]) {
@@ -17,10 +18,10 @@ int main(int argc, char *argv[]) {
     // sdl setup
     SDL_Window *window;
     SDL_Renderer *renderer;
-    sdl_init(WINDOW_WIDTH, WINDOW_HEIGHT, &window, &renderer);
+    TTF_Font *font;
+    sdl_init(WINDOW_WIDTH, WINDOW_HEIGHT, &window, &renderer, &font);
 
-    // első indításkor alap setup a 6x12-es board
-    game_setup(renderer, 6, 12);
+    menu_selector_loop(renderer, font);
 
     /* az elvegzett rajzolasok a kepernyore */
     // SDL_RenderPresent(renderer);

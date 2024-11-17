@@ -74,3 +74,35 @@ inkább legyen érthető
 nagyon wacky alt megoldás a delay előtt felsetuppolni egy event loopot, ami minden eventet, kivéve a delay végén érkező, saját user eventet felfog
 
 de szerintem érthetőbb csinálni egy enable_events változót
+
+minden függvénynek kell-e minden változó, amit megkap
+
+név egységesítés
+pl a jelző (timer, flag, nemtommi) mindig az elején vagy a végén legyen
+
+rd.rendererek kinyírása
+vagy nemtom, refactor check
+
+megj: minden ami rajzol, csak CommonRenderData-t kap
+ha függ az, hogy mit rajzol a játékállástól, akkor a game_state-et is megkapja, hogy kiolvassa belőle
+
+initben font betöltött-e
+
+RGBA helyett Color-t használni, ahol értelmesebb
+
+renderel-e felesleges dolgot
+pl amikor a block renderelésnél az üreseket is kirenderelte, csak a háttérszínnel
+
+memóriafoglalásnál fprintf(stderr) cuccok
+
+hosszú nyomásnál ha animáció előtt le volt nyomva, majd felengedte,
+és újra lenyomja animáció vége előtt, és ez után rögtön vége az animációnak, nem kezd el arra menni, amíg a billentyűzetes auto repeat le nem nyomja
+
+minden case rész végén van break
+
+dobozok margója mindig be vagy mindig kifele szóljon
+
+debugmalloc lehet csak mainre szól?
+mindenhol includeolni?
+
+ESC a játékképernyőn legyen újraindítás

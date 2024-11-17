@@ -8,6 +8,8 @@
 #include <time.h>
 
 #include "game_loop.h"
+#include "game_render.h"
+#include "settings_loop.h"
 
 // visszaad egy random nem üres blokkot
 static Block gen_rand_block() {
@@ -108,23 +110,73 @@ static void free_game_state(GameState *game_state, int board_width, int board_he
     }
     free(game_state->board);
 }
-void game_setup(SDL_Renderer *renderer, int board_width, int board_height) {
+// TODO más a neve, mást csinál
+// start_game_loop?
+int game_setup(SDL_Renderer *renderer, TTF_Font *font, int board_width, int board_height) {
+    // TODO vagy a többi init függvényét is itt megcsinálni, vagy ezt az initet is a game_loop.c-be rakni
+
     // TODO ez majd egy nagyobb loop, mindig a game_loop-ot indítja, return code alapján vált képernyőt
     // többi menüből kilépve mindig újraindítja a game_loop-ot, lefoglalja a dolgokat.
 
     srand(time(NULL));  // randomizálás beállítása
-    GameState game_state;
 
+    // TODO pontosan a közepére, a renderben van debug rá
+
+    GameState game_state;
     bool success = init_game_state(&game_state, board_width, board_height);
 
-    if (success) {
-        int return_code = game_loop(renderer, &game_state);
-#define TESZT
-#ifdef TESZT
-        printf("return_code: %d\n", return_code);
-#endif
-    }
+    if (!success) return -1;
+
+    // rajzoláshoz szükséges adatok
+    CommonRenderData rd = init_common_render_data(renderer, font, &game_state);
+
+    // első állapot megrajzolása
+    // TODO width és height behozása mind glob konstans
+    // fehér háttér
+    boxRGBA(renderer, 0, 0, 1600, 1000, 255, 255, 255, 255);
+
+    // menügombok
+    render_text_block(rd, "Beállítások", 1300, 500, 0x000000FF);
+    render_text_block(rd, "Ranglista", 1320, 600, 0x000000FF);
+
+    // játékállás kirajzolása
+    render_game(rd, &game_state);
+    int return_code = game_loop(rd, &game_state);
 
     // tábla felszabadítása
     free_game_state(&game_state, board_width, board_height);
+
+    return return_code;
+}
+
+void menu_selector_loop(SDL_Renderer *renderer, TTF_Font *font) {
+    int return_code;
+    int board_height = 12;
+    int board_width = 6;
+    while (true) {
+        return_code = game_setup(renderer, font, board_width, board_height);
+        // hiba történt, vagy a felhasználó ki akar lépni
+        if (return_code == -1 || return_code == 0) {
+            break;
+        }
+        return_code = 1;
+        // ezek return code-ja csak az lehet, hogy hiba volt, vagy nem volt hiba, és visszatérhet a játékhoz
+        switch (return_code) {
+            case 1:
+                return_code = settings_loop(renderer, font, &board_width, &board_height);
+                break;
+            case 2:
+                break;
+            case 3:
+                break;
+            default:
+                break;
+        }
+        // kilép, mert hiba volt
+        // TODO elméletben nem kell már semmit se felszabadítani
+        // TODO írja a hibát?
+        if (return_code == -1) break;
+        // felhasználó lezárja az ablakot
+        if (return_code == 0) break;
+    }
 }

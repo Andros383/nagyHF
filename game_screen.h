@@ -3,6 +3,7 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfxPrimitives.h>
+#include <SDL2/SDL_ttf.h>
 // egy block a legkisebb rész, a táblán 1x1-es cella
 // minden állapotát felveszi
 typedef enum Block {
@@ -36,7 +37,7 @@ typedef struct ScoreData {
 // minden ami egy játékállást reprezentál
 typedef struct GameState {
     // a board bal alsó sarokból van számozva, felfelé nő y, jobbra nő x
-    Block** board;
+    Block **board;
     int board_width;
     int board_height;
     Piece queue[2];  // fixen 2 a mérete
@@ -44,6 +45,7 @@ typedef struct GameState {
     ScoreData score_data;
 } GameState;
 
-void game_setup(SDL_Renderer* renderer, int board_width, int board_height);
+int game_setup(SDL_Renderer *renderer, TTF_Font *font, int board_width, int board_height);
+void menu_selector_loop(SDL_Renderer *renderer, TTF_Font *font);
 Piece gen_rand_piece();
 #endif

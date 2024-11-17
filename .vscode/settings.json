@@ -5,6 +5,12 @@
 		"stdlib.h": "c",
 		"sdl2_gfxprimitives.h": "c",
 		"stdbool.h": "c",
-		"stdio.h": "c"
+		"stdio.h": "c",
+		"game_render.h": "c",
+		"game_loop.h": "c",
+		"settings_loop.h": "c",
+		"time.h": "c",
+		"game_screen.h": "c",
+		"sdl_setup.h": "c"
 	}
 }

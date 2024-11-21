@@ -5,14 +5,19 @@
 #include <stdio.h>  //TODO ezt kivenni, mert nem fog a konzolra írni
 #include <stdlib.h>
 
+#include "database.h"
 #include "debugmalloc.h"
 #include "game_screen.h"
 #include "sdl_setup.h"
-
 const int WINDOW_WIDTH = 1600;
 const int WINDOW_HEIGHT = 1000;
 
 int main(int argc, char *argv[]) {
+    Entries e;
+    read_entries(&e);
+    debug_entries(e);
+    //
+    return 0;
     // TODO kivenni, meg nézni, megy-e
 
     // sdl setup

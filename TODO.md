@@ -133,6 +133,7 @@ switchek defaultjában kiírni a hibát, ha baj, akkor returnolni, ha nem, akkor
 valid a stringkezelésem? az sprintf()-es mágia
 jó-e a debugmalloc behozása?
 Hibát hogyan kéne jeleznem? Elég csak errorra kiírni? info-cn megnézni
+hogyan tudom megkülönböztetni, hogy hiba volt a fájl megnyitásakor, vagy nem létezik?
 
 errornál a felszabadítások ellenőrzése
 
@@ -147,3 +148,22 @@ MINDEN MALLOC ELLENŐRZÉS, VAN-E POINTER CAST ÉS TYPEOF
 minden switchnek minden ága le van breakezve
 
 kivenni az esces kilépést
+
+https://infoc.eet.bme.hu/ea02/#6
+kéne egy strict ISO C -pedantic flag?
+BEÁLLÍTANI CODEBLOCKSBA IS
+
+https://infoc.eet.bme.hu/scanf/
+scanf problémákat 
+
+height width sorrend?
+
+debugmalloc nem szól amikor nem szabadítom fel teszt után az entries list mezejét
+
+mindenhol nézem-e ahol van visszatérési érték
+
+kommentes összefoglaló a fileok működéséről
+
+bevenni a megállító jeleket átnézésben a for ciklus feltételbe?
+pl az insert_entry-nél az átnézőben ami átírja az értékeket, hogy lépjen ki
+akkor már inkább break

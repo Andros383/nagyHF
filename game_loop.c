@@ -67,7 +67,10 @@ int pop_groups(CommonRenderData rd, GameState *game_state, int chain_length, int
 
     // temp változó, járt-e már ott a bejárás
     bool **visited = (bool **)malloc(width * sizeof(bool *));
+
+    // elsőt se sikerült lefoglalni
     if (visited == NULL) return -1;
+
     for (int x = 0; x < game_state->board_width; x++) {
         visited[x] = (bool *)malloc(height * sizeof(bool));
 
@@ -86,7 +89,13 @@ int pop_groups(CommonRenderData rd, GameState *game_state, int chain_length, int
     // egy lépés végén a törlendő cellák
     // animáció miatt kell lementeni
     bool **clear = (bool **)malloc(width * sizeof(bool *));
+
     if (clear == NULL) {
+        // egész visited tömb felszabadítása
+        for (int x = 0; x < width; x++) {
+            free(visited[x]);
+        }
+        free(visited);
         return -1;
     }
 
@@ -493,7 +502,7 @@ int game_loop(CommonRenderData rd, GameState *game_state) {
     // emiatt belépéskor a tábla kétszer lesz lerajzolva
 
     // fogad-e bemenetek a loop
-    bool enable_events = true;
+    bool enable_movement = true;
 
     SDL_Event event;
 
@@ -535,11 +544,11 @@ int game_loop(CommonRenderData rd, GameState *game_state) {
         // gravitáció fogadásának külön állítása
         // ha a switchben lenne, nem lehetne visszakapcsolni
         if (event.type == SDL_USEREVENT + 1) {
-            enable_events = false;
+            enable_movement = false;
             continue;
         }
         if (event.type == SDL_USEREVENT + 2) {
-            enable_events = true;
+            enable_movement = true;
             continue;
         }
         // ha nem fogad bemenetet, eldobja, várja a következőt
@@ -548,8 +557,19 @@ int game_loop(CommonRenderData rd, GameState *game_state) {
         // csak a keydown eventeket dobja ki, mert csak azok bajosak
         // hogy ne tudja forgatni a részeket
         // bemozgatni a switchbe a checket
-        if (!enable_events && event.type == SDL_KEYDOWN) {
-            continue;
+
+        // TODO enable_movement kéne
+        // ha nem engedi az eventeket
+        if (!enable_movement) {
+            // kikapcsol mindenféle mozgást, a gravitációt, és az ismétlődő mozgásokat az animáció idejére
+            Uint32 disabled_events[5] = {SDL_KEYDOWN, SDL_USEREVENT, SDL_USEREVENT + 10, SDL_USEREVENT + 11, SDL_USEREVENT + 12};
+            Uint32 type = event.type;
+            bool skip = false;
+            for (int i = 0; i < 5; i++) {
+                if (type == disabled_events[i]) skip = true;
+            }
+            // következő event behívása
+            if (skip) continue;
         }
 
         switch (event.type) {

@@ -4,6 +4,8 @@
 #include <SDL2/SDL2_gfxPrimitives.h>
 #include <SDL2/SDL_ttf.h>
 
+#include "debugmalloc.h"
+
 // source : infoc
 /* ablak megnyitasa */
 void sdl_init(int szeles, int magas, SDL_Window **pwindow, SDL_Renderer **prenderer, TTF_Font **font) {

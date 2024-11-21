@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "debugmalloc.h"
 #include "game_screen.h"
 
 // TODO itt sok a másolt kód, más-más néven van ugyan az elmentve, de legalább érthető?
@@ -103,7 +104,8 @@ void rotate_cw(GameState *game_state, int *upkick) {
 
         if (kick) {
             // nem rúg le a tábláról
-            if (piece.x2 + 1 <= game_state->board_width) {
+            // ITT IS VOLT VÁLTOZTATÁS
+            if (piece.x2 + 1 < game_state->board_width) {
                 // tud rúgni
                 if (game_state->board[piece.x2 + 1][piece.y2] == EMPTY) {
                     game_state->active_piece.x1 = piece.x1;
@@ -135,7 +137,8 @@ void rotate_cw(GameState *game_state, int *upkick) {
 
         if (kick) {
             // nem rúg le a tábláról
-            if (piece.y2 + 1 <= game_state->board_height) {
+            // TODO ITT IS VOLT VÁLTOZTATÁS
+            if (piece.y2 + 1 < game_state->board_height) {
                 // ha még nem rúgott túl sokszor fel
                 if (*upkick < 3) {
                     // számolja a felrúgásokat
@@ -184,7 +187,7 @@ void rotate_ccw(GameState *game_state, int *upkick) {
 
         if (kick) {
             // nem rúg le a tábláról
-            if (piece.x2 + 1 <= game_state->board_width) {
+            if (piece.x2 + 1 < game_state->board_width) {
                 // be tudja rúgni
                 if (game_state->board[piece.x2 + 1][piece.y2] == EMPTY) {
                     game_state->active_piece.x1 = piece.x1;
@@ -217,8 +220,9 @@ void rotate_ccw(GameState *game_state, int *upkick) {
         }
 
         if (kick) {
+            // TODO ITT VOLT BÁLTOZTATÁS
             // nem rúg le a tábláról
-            if (piece.y2 + 1 <= game_state->board_height) {
+            if (piece.y2 + 1 < game_state->board_height) {
                 // ha még nem rúgott túl sokszor fel
                 if (*upkick < 3) {
                     // számolja a felrúgásokat

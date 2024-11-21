@@ -106,3 +106,44 @@ debugmalloc lehet csak mainre szól?
 mindenhol includeolni?
 
 ESC a játékképernyőn legyen újraindítás
+
+magasság szélesség állításakor bal gomb lenyomva, egér mozgatással gyorsan számol
+megcsinálni egy held_down változót
+
+print bounds check?
+
+forgatást unblock átnézni
+a "VÁLTOZTATÁS" helyeket átnézni, de elméletben OK minden?
+mert a >=-ket megnéztem
+
+minden color-t RGBA-ra cserélni
+segédfüggvény ami kirajzol blokk alapján AKÁRHOVA egy kört, ezt használja a gridre rajzoló
+
+lehet-e függvényt a használata után deklarálni, ha be van magába includeolva a fájl?
+
+malloc() elé hogy konvertálja a jó típusú pointerré
+
+(int*)malloc(), (int*) ne maradjon le
+
+backgroundot átnevezni borderre ahol valójában keret
+
+switchek defaultjában kiírni a hibát, ha baj, akkor returnolni, ha nem, akkor meg a kódban van a baj, nem kell kilépni szerintem, mert jó kódot írtam
+
+--- KÉRDÉSEK 2
+valid a stringkezelésem? az sprintf()-es mágia
+jó-e a debugmalloc behozása?
+Hibát hogyan kéne jeleznem? Elég csak errorra kiírni? info-cn megnézni
+
+errornál a felszabadítások ellenőrzése
+
+egységesíteni a hibaüzeneteket
+
+ugye amit nem sikerült lefoglalni nem kell felszabadítani
+
+duplás tömbjeimnél van ilyen helyzet
+
+MINDEN MALLOC ELLENŐRZÉS, VAN-E POINTER CAST ÉS TYPEOF
+
+minden switchnek minden ága le van breakezve
+
+kivenni az esces kilépést

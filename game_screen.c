@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include "debugmalloc.h"
 #include "game_loop.h"
 #include "game_render.h"
 #include "settings_loop.h"
@@ -60,23 +61,30 @@ static bool init_game_state(GameState *game_state, int board_width, int board_he
         fprintf(stderr, "Sikertelen memoriafoglalas @ game_state->board\n");
         return false;
     }
+
     for (int x = 0; x < board_width; x++) {
         game_state->board[x] = (Block *)malloc(board_height * sizeof(Block));
         if (game_state->board[x] == NULL) {
+            // TODO stderr-re kell majd kirakni?
             fprintf(stderr, "Sikertelen memoriafoglalas @ game_state->board[i]\n");
-            // TODO ezen a ponton az előző sikeres foglalások le vannak foglalva, kezelni kell?
-            // TODO IGEN, kezelni kell
+
+            // előző oszlopok felszabadítása
+            for (int i = 0; i < x; i++) {
+                free(game_state->board[i]);
+            }
+            // egész tábla felszabadítása
+            free(game_state->board);
+
+            // nem sikerült inicializálni
             return false;
         }
+    }
 
-        // Nullázás
+    // Nullázás
+    for (int x = 0; x < board_width; x++) {
         for (int y = 0; y < board_height; y++) {
             game_state->board[x][y] = EMPTY;
         }
-
-        // TODO ez az indexelés a jó? mmint op precedence
-        // elm igen, de -> és a [] egy szinten van
-        // https://en.cppreference.com/w/c/language/operator_precedence
     }
 
     game_state->board_width = board_width;
@@ -98,6 +106,8 @@ static bool init_game_state(GameState *game_state, int board_width, int board_he
     game_state->score_data.longest_chain = 0;
     game_state->score_data.placed_pieces = 0;
     game_state->score_data.score = 0;
+
+    // sikeres inicializálás
     return true;
 }
 
@@ -136,8 +146,8 @@ int game_setup(SDL_Renderer *renderer, TTF_Font *font, int board_width, int boar
     boxRGBA(renderer, 0, 0, 1600, 1000, 255, 255, 255, 255);
 
     // menügombok
-    render_text_block(rd, "Beállítások", 1300, 500, 0x000000FF);
-    render_text_block(rd, "Ranglista", 1320, 600, 0x000000FF);
+    render_text_block(rd, "Beállítások", 1300, 500, 1);
+    render_text_block(rd, "Ranglista", 1320, 600, 1);
 
     // játékállás kirajzolása
     render_game(rd, &game_state);

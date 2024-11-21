@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "debugmalloc.h"
 #include "game_piece_rotations.h"
 #include "game_render.h"
 #include "game_screen.h"
@@ -16,10 +17,11 @@
 //  mindegyik függvény változtatja a játékállapotot így vagy úgy, azaz pointerként veszik át a game_state-et
 //  TODO ezeket okosabban? talán meg lehetne oldani a mozgásokat
 
-// első híváskor visited-nek üresnek kell lennie
-// amikor visszatér, a visitedben benne lesz, hogy melyik cellák vannak az adott csoportban
-// visszaadja, hogy innen indulva a bejáratlan részeken mekkora csoportosulásban van a szín
-int group_size(GameState *game_state, bool **visited, Block searched_color, int x, int y) {
+// rekurzív bejárás
+// első híváskor a visited tömb minden eleme legyen hamis
+// visszatérési értéke a csoport mérete
+// visszatéréskor a visited tömbben megjelöli a csoport elemeit
+int explore_group(GameState *game_state, bool **visited, Block searched_color, int x, int y) {
     // szebb ha itt veszem fel a szélcheckeket
 
     // megpróbált lelépni a tábláról
@@ -35,17 +37,19 @@ int group_size(GameState *game_state, bool **visited, Block searched_color, int 
     visited[x][y] = true;
 
     // mind a négy irányban szétnéz
-    size += group_size(game_state, visited, searched_color, x, y + 1);
-    size += group_size(game_state, visited, searched_color, x + 1, y);
-    size += group_size(game_state, visited, searched_color, x, y - 1);
-    size += group_size(game_state, visited, searched_color, x - 1, y);
+    size += explore_group(game_state, visited, searched_color, x, y + 1);
+    size += explore_group(game_state, visited, searched_color, x + 1, y);
+    size += explore_group(game_state, visited, searched_color, x, y - 1);
+    size += explore_group(game_state, visited, searched_color, x - 1, y);
 
     return size;
 }
 
 // TODO kéne neki gravot hívnia utána?
 //  törli a négy vagy nagyobb csoportokat, és visszaadja, volt-e törlés
-bool pop_groups(CommonRenderData rd, GameState *game_state) {
+// TODO hibakód
+// a cleared_groups és a cleared_blocks változókba belerakja a törölt csoportok és a törölt blokkok számát
+int pop_groups(CommonRenderData rd, GameState *game_state, int chain_length, int *cleared_groups, int *cleared_blocks) {
     // TODO mit kéne, ha nem tudja lefoglalni?
     // nem tudom szépen visszaadni értékként, hogy volt-e pop és hogy sikeres volt a memóriafoglalás
 
@@ -58,27 +62,60 @@ bool pop_groups(CommonRenderData rd, GameState *game_state) {
 
     // TODO kieemelni a lefoglalást?
 
+    // használt tömbök lefoglalása
+    // ha nem sikerül egy foglalás, a visszatérési kód -1
+
     // temp változó, járt-e már ott a bejárás
     bool **visited = (bool **)malloc(width * sizeof(bool *));
-    for (int i = 0; i < game_state->board_width; i++) {
-        visited[i] = (bool *)malloc(height);
-    }
+    if (visited == NULL) return -1;
+    for (int x = 0; x < game_state->board_width; x++) {
+        visited[x] = (bool *)malloc(height * sizeof(bool));
 
-    for (int x = 0; x < width; x++) {
-        for (int y = 0; y < height; y++) {
-            visited[x][y] = false;
+        // előző oszlopok felszabadítás
+        if (visited[x] == NULL) {
+            for (int i = 0; i < x; i++) {
+                free(visited[i]);
+            }
+            // eredeti tömb felszabadítása
+            free(visited);
+            // hibakód visszaadása
+            return -1;
         }
     }
 
     // egy lépés végén a törlendő cellák
     // animáció miatt kell lementeni
     bool **clear = (bool **)malloc(width * sizeof(bool *));
-    for (int i = 0; i < game_state->board_width; i++) {
-        clear[i] = (bool *)malloc(height);
+    if (clear == NULL) {
+        return -1;
     }
 
+    for (int x = 0; x < game_state->board_width; x++) {
+        clear[x] = (bool *)malloc(height * sizeof(bool));
+
+        if (clear[x] == NULL) {
+            // előző oszlopok felszabadítása
+            for (int i = 0; i < x; i++) {
+                free(clear[i]);
+            }
+
+            // tömb felszabadítása
+            free(clear);
+
+            // egész visited tömb felszabadítása
+            for (int x = 0; x < width; x++) {
+                free(visited[x]);
+            }
+            free(visited);
+
+            return -1;
+        }
+    }
+
+    // tömbök nullázása
     for (int x = 0; x < width; x++) {
         for (int y = 0; y < height; y++) {
+            visited[x][y] = false;
             clear[x][y] = false;
         }
     }
@@ -90,21 +127,33 @@ bool pop_groups(CommonRenderData rd, GameState *game_state) {
     // volt-e csoport törlése
     bool pop = false;
 
+    // pontozáshoz
+    *cleared_groups = 0;
+    *cleared_blocks = 0;
+
     for (int x = 0; x < width; x++) {
         for (int y = 0; y < height; y++) {
-            // nem üres és nem látogatott, elkezdi a bejárást innen
-            if (!visited[x][y] && game_state->board[x][y] != EMPTY) {
-                // TODO valami jobb név
-                int size = group_size(game_state, visited, game_state->board[x][y], x, y);
+            // ha az adott csoportot már töröltük, akkor nem járjuk be innen is a csoportot
+            // ha nem kell törölni bejárhatjuk, a pontszámon nem változtat
+            // lehet többször járjuk be a 3 vagy kisebb csoportokat, de megúszunk még egy tömböt
+            if (!clear[x][y] && game_state->board[x][y] != EMPTY) {
+                int size = explore_group(game_state, visited, game_state->board[x][y], x, y);
                 // ebben az állapotban a visited pontosan tartalmazza, hogy melyik cellák vannak benne a vizsgált csoportban
+
+                // ilyenkor töröltünk csoportot
+                if (size >= 4) (*cleared_groups)++;
+
                 for (int x = 0; x < width; x++) {
                     for (int y = 0; y < height; y++) {
                         // ha a csoportméret elég nagy, felírja, miket kell törölnie
                         if (size >= 4 && visited[x][y]) {
                             clear[x][y] = true;
                             pop = true;
+
+                            (*cleared_blocks)++;
                         }
-                        // egyben nullázza is a tömböt
+
+                        // a csoportmérettől függetlenül törli a visited elemeit
                         visited[x][y] = false;
                     }
                 }
@@ -112,7 +161,13 @@ bool pop_groups(CommonRenderData rd, GameState *game_state) {
         }
     }
 
+    // törlés közbeni rajzolások & elemek törlése a tábláról
     if (pop) {
+        char chain_label[] = "10-LÁNC";
+        sprintf(chain_label, "%2d-LÁNC", chain_length);
+
+        render_text_block(rd, chain_label, 100, 500, 0);
+
         // TODO első híváskor van egy nagyon kicsi kör, meg kéne lennie egy megállásnak a teljes törléskor is
         for (int pop_anim_count = 1; pop_anim_count <= 3; pop_anim_count++) {
             for (int x = 0; x < width; x++) {
@@ -137,6 +192,9 @@ bool pop_groups(CommonRenderData rd, GameState *game_state) {
         }
     }
 
+    // TODO függvények írása a tömbök felszabadítására
+    // tömbök felszabadítása
+
     for (int x = 0; x < width; x++) {
         free(visited[x]);
     }
@@ -147,7 +205,12 @@ bool pop_groups(CommonRenderData rd, GameState *game_state) {
     }
     free(clear);
 
-    return pop;
+    // TODO jobban megcsinálni
+    // volt csoport törlése: 1
+    // nem volt csoport törlése: 0
+    // memóriafoglalási hiba: -1
+    // nem akartam a törölt csoportok számát keverni a visszatérési kóddal
+    return pop ? 1 : 0;
 }
 // TODO végigstaticozni
 // Leejti a táblán a lebegő részeket
@@ -193,12 +256,54 @@ void lock_active_piece(CommonRenderData rd, GameState *game_state, int *nat_grav
     gravity(game_state);
     render_game(rd, game_state);
 
-    // pop_groups igaz, ha törlődött csoport ebben a lépésben
-    // ha törlődött, akkor gravitációt aktiváljuk, majd megint töröljük a csoportokat
-    while (pop_groups(rd, game_state)) {
+    // Csoportok törlése több lépésben
+
+    int cleared_groups = 0;
+    int cleared_blocks = 0;
+    int chain_length = 0;
+
+    // 1: törölt csoportokat
+    // 0: nem volt törlés
+    // -1: memóraifoglalási hiba
+    int return_code = pop_groups(rd, game_state, chain_length + 1, &cleared_groups, &cleared_blocks);
+    // chain_length + 1-et kap, mert ha van lánc, akkor kirajzolja a lánc hosszát
+
+    while (return_code != 0) {
+        // TODO -1 check, hogy volt-e hiba a foglalásban
+        chain_length++;
+        int mult = 1;
+
+        // 2 hatvány kiszámítása
+        for (int i = 0; i < chain_length - 1; i++) {
+            mult *= 2;
+        }
+
+        // hozzáadott pontszám: 2^([lánchossz]-1) * (10*[törölt csoportok a lépésben] + [törölt blokkok a lépésben]);
+        // picit erősen pontozza a hosszú láncokat, de nem baj, átírható a számolás
+        int added_score = mult * (10 * cleared_groups + cleared_blocks);
+
+        game_state->score_data.score += added_score;
+
+        printf("chain: %d, cleared_groups: %d, cleared_blocks: %d\n", chain_length, cleared_groups, cleared_blocks);
+
+        printf("Added score: %d\n", added_score);
+
+        // gravitációval rendezés
         gravity(game_state);
-        render_game(rd, game_state);
+        // ránézésre fine
+        render_board(rd, game_state->board);
+
+        // következő iterációra az adatok előállítása
+        return_code = pop_groups(rd, game_state, chain_length + 1, &cleared_groups, &cleared_blocks);
     }
+
+    // TODO a leghosszabb lánc kiírása a render függvényben
+    if (chain_length > game_state->score_data.longest_chain) {
+        game_state->score_data.longest_chain = chain_length;
+    }
+
+    // eggyel több részt rakunk le
+    game_state->score_data.placed_pieces++;
 
     // TODO new piece alapból a jó helyre rakja le? Queue-ba jól tegye bele
     //  új rész behozása
@@ -207,6 +312,10 @@ void lock_active_piece(CommonRenderData rd, GameState *game_state, int *nat_grav
     game_state->active_piece.x2 = game_state->board_width / 2;
     game_state->active_piece.y1 = game_state->board_height - 1;
     game_state->active_piece.y2 = game_state->board_height - 2;
+
+    // sor léptetése
+    game_state->queue[0] = game_state->queue[1];
+    game_state->queue[1] = gen_rand_piece();
 
     // részre vonatkozó anti-stalling számlálók törlése
     *nat_grav = 0;
@@ -222,13 +331,9 @@ void lock_active_piece(CommonRenderData rd, GameState *game_state, int *nat_grav
         // TODO game over megcsinálása
     }
 
-    game_state->queue[0] = game_state->queue[1];
-    game_state->queue[1] = gen_rand_piece();
-
     // TODO rendszerezni a pontkezelő függvényeket?
     // talán saját fájlba a pont, sajátba a game_state, sajátba a render függvényeket
     // és akkor egymást hivogatják
-    game_state->score_data.placed_pieces++;
 
     // be kell hozni a billentyűzet eventjeit, különben az event be és kikapcsolása nem hatna rájuk
     // feltételezésem szerint csak wait event-kor kerülnek rá ténylegesen az SDL event sorra
@@ -351,11 +456,25 @@ Uint32 soft_timer(Uint32 ms, void *param) {
     SDL_PushEvent(&ev);
     return ms; /* ujabb varakozas */
 }
+// gravitáció időzítője
+// a lerakott részek alapján gyorsul / lassul
 Uint32 gravity_timer(Uint32 ms, void *param) {
     SDL_Event ev;
     ev.type = SDL_USEREVENT;
     SDL_PushEvent(&ev);
-    return ms; /* ujabb varakozas */
+
+    int placed_pieces = *((int *)param);
+
+    // a lerakott részek számával gyorsul
+    // első 250/5 = 50 résznél még nem aktiválódik
+    // legalább 200 ms van két gravitáció közt
+    // TODO tesztelni
+    int delay = 1250 - placed_pieces * 5;
+    if (delay > 1000) delay = 1000;
+    if (delay < 200) delay = 200;
+    printf("placed pieces: %d, delay: %d\n", placed_pieces, delay);
+
+    return delay;
 }
 
 int game_loop(CommonRenderData rd, GameState *game_state) {
@@ -368,14 +487,10 @@ int game_loop(CommonRenderData rd, GameState *game_state) {
     // TODO csak akkor, ha még nem nyomtak le irányítási gombot
     //  50 fps, de lehetne timer indítgatásokkal is
     // gravitáció időzítője
-    SDL_TimerID id = SDL_AddTimer(20, gravity_timer, NULL);
+    SDL_TimerID timerid_gravity = SDL_AddTimer(1000, gravity_timer, &game_state->score_data.placed_pieces);
+    // hány ezredmásodpercenként lépjen lejjeb a gravitáció
     // TODO valamiér a gravitáció egyszer mindig meghívódik az elején
     // emiatt belépéskor a tábla kétszer lesz lerajzolva
-
-    // hányszor volt gravity_event
-    // egyenlőre így lesz, maradékkal nézve hogy ritkítsam
-    // de lehet hogy majd csak mindig új időzítőket indítok pieceszám váltásnál
-    int timer_counter = 0;
 
     // fogad-e bemenetek a loop
     bool enable_events = true;
@@ -531,14 +646,10 @@ int game_loop(CommonRenderData rd, GameState *game_state) {
                         break;
                 }
                 break;
-            case SDL_USEREVENT:  // gravitáció
-                // TODO gravitáció állítása
-                if (timer_counter % 500 == 0) {
-                    natural_gravity(rd, game_state, &nat_grav, &upkick);
-                    timer_counter = 0;
-                    draw = true;
-                }
-                timer_counter++;
+            case SDL_USEREVENT:
+                // gravitáció
+                natural_gravity(rd, game_state, &nat_grav, &upkick);
+                draw = true;
 
                 break;
 
@@ -566,9 +677,9 @@ int game_loop(CommonRenderData rd, GameState *game_state) {
                 if (selected_settings != in_settings) {
                     if (in_settings) {
                         // szürke keret, ha ki van választva
-                        render_text_block(rd, "Beállítások", 1300, 500, 0xFF0000FF);
+                        render_text_block(rd, "Beállítások", 1300, 500, 2);
                     } else {
-                        render_text_block(rd, "Beállítások", 1300, 500, 0x000000FF);
+                        render_text_block(rd, "Beállítások", 1300, 500, 1);
                     }
                     selected_settings = in_settings;
                     // ha változott, ki kell rajzolni
@@ -576,9 +687,9 @@ int game_loop(CommonRenderData rd, GameState *game_state) {
                 }
                 if (selected_toplist != in_toplist) {
                     if (in_toplist) {
-                        render_text_block(rd, "Ranglista", 1320, 600, 0xFF0000FF);
+                        render_text_block(rd, "Ranglista", 1320, 600, 2);
                     } else {
-                        render_text_block(rd, "Ranglista", 1320, 600, 0x000000FF);
+                        render_text_block(rd, "Ranglista", 1320, 600, 1);
                     }
                     selected_toplist = in_toplist;
                     SDL_RenderPresent(rd.renderer);
@@ -610,7 +721,7 @@ int game_loop(CommonRenderData rd, GameState *game_state) {
 
     // TODO minden időzítő leállítása
     // időzítő leállítása
-    SDL_RemoveTimer(id);
+    SDL_RemoveTimer(timerid_gravity);
 
     // TODO ez csak placeholder return code
     return return_code;

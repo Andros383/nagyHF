@@ -20,5 +20,6 @@ typedef struct CommonRenderData {
 CommonRenderData init_common_render_data(SDL_Renderer *renderer, TTF_Font *font, GameState *game_state);
 void render_game(CommonRenderData rd, GameState *game_state);
 void render_animation_block(CommonRenderData rd, int x, int y, double radius_mult);
-void render_text_block(CommonRenderData rd, char *text, int x, int y, Uint32 outline_color);
+void render_text_block(CommonRenderData rd, char *text, int x, int y, int outline_color_code);
+void render_board(CommonRenderData rd, Block **board);
 #endif

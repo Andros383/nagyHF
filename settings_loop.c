@@ -9,17 +9,36 @@
 
 #include "game_render.h"
 
-// kirajzol egy 50*50-es gombot, egy karakterrel a közepén
 // a + és - gombok rajzolásának segítésére
+// kirajzol egy 50*50-es gombot, egy karakterrel a közepén
 // a button_text itt vagy "+" vagy "-"
 // x, y a bal felső sarok koordinátái
-// background_color a keret színe, mint 32 bites szám
-static void render_button(CommonRenderData rd, char *button_text, int x, int y, Uint32 background_color) {
+// border_outline_code a keret színe kód alapján, a render_text_block alapján
+// 1: fekete
+// 2: piros
+
+static void render_button(CommonRenderData rd, char *button_text, int x, int y, int outline_color_code) {
+    // TODO itt is lehetne egybevonni az = jeleket
+    int r = 0, g = 0, b = 0, a = 0;
+
+    switch (outline_color_code) {
+        case 1:
+            a = 255;
+            break;
+        case 2:
+            r = 255;
+            a = 255;
+            break;
+        default:
+            printf("Invalid outline_color_code in settings_loop.c\n");
+            break;
+    }
     // keret
-    boxColor(rd.renderer, x, y, x + 50, y + 50, background_color);
-    boxColor(rd.renderer, x + 2, y + 2, x + 50 - 2, y + 50 - 2, 0xFFFFFFFF);
+    boxRGBA(rd.renderer, x, y, x + 50, y + 50, r, g, b, a);
+    // közepét fehérre kell színezni, mert a + nem tölti ki a négyzetet
+    boxRGBA(rd.renderer, x + 2, y + 2, x + 50 - 2, y + 50 - 2, 255, 255, 255, 255);
     // kézzel középre állított
-    render_text_block(rd, button_text, x + 17, y + 10, 0x00000000);
+    render_text_block(rd, button_text, x + 17, y + 10, 0);
 }
 static void render_width_height_labels(CommonRenderData rd, int board_width, int board_height) {
     // alap állapot kirajzolása
@@ -35,8 +54,8 @@ static void render_width_height_labels(CommonRenderData rd, int board_width, int
     char height_label[] = "Magasság: 10";
     sprintf(height_label, "Magasság: %2d", board_height);
 
-    render_text_block(rd, width_label, 500, 200, 0x00000000);
-    render_text_block(rd, height_label, 850, 200, 0x00000000);
+    render_text_block(rd, width_label, 500, 200, 0);
+    render_text_block(rd, height_label, 850, 200, 0);
 }
 // kirajzolja első belépéskor a képernyőt
 static void render_starting_screen(CommonRenderData rd, int board_width, int board_height) {
@@ -51,42 +70,42 @@ static void render_starting_screen(CommonRenderData rd, int board_width, int boa
     render_width_height_labels(rd, board_width, board_height);
 
     // Szélesség + - gombjai
-    render_button(rd, "-", 500, 125, 0x000000FF);
-    render_button(rd, "+", 684, 125, 0x000000FF);
+    render_button(rd, "-", 500, 125, 1);
+    render_button(rd, "+", 684, 125, 1);
 
     // Magasság + - gombjai
-    render_button(rd, "-", 850, 125, 0x000000FF);
-    render_button(rd, "+", 1016, 125, 0x000000FF);
+    render_button(rd, "-", 850, 125, 1);
+    render_button(rd, "+", 1016, 125, 1);
 
     // Kilépő gomb
-    render_button(rd, "<", 125, 125, 0x000000FF);
+    render_button(rd, "<", 125, 125, 1);
 
     // Irányítások
 
     // ez legyen középen
-    render_text_block(rd, "Irányítások", 1600 / 2 - 198 / 2, 300, 0x00000000);
+    render_text_block(rd, "Irányítások", 1600 / 2 - 198 / 2, 300, 0);
 
-    render_text_block(rd, "Balra:", 500, 350, 0x00000000);
-    render_text_block(rd, "Jobbra:", 500, 400, 0x00000000);
-    render_text_block(rd, "Lassú leejtés:", 500, 450, 0x00000000);
-    render_text_block(rd, "Gyors lerakás:", 500, 500, 0x00000000);
-    render_text_block(rd, "Forgatás 1:", 500, 550, 0x00000000);
-    render_text_block(rd, "Forgatás 2:", 500, 600, 0x00000000);
-    render_text_block(rd, "Újraindítás:", 500, 650, 0x00000000);
-    render_text_block(rd, "Menüből kilépés:", 500, 700, 0x00000000);
-    render_text_block(rd, "Program lezárása:", 500, 750, 0x00000000);
+    render_text_block(rd, "Balra:", 500, 350, 0);
+    render_text_block(rd, "Jobbra:", 500, 400, 0);
+    render_text_block(rd, "Lassú leejtés:", 500, 450, 0);
+    render_text_block(rd, "Gyors lerakás:", 500, 500, 0);
+    render_text_block(rd, "Forgatás 1:", 500, 550, 0);
+    render_text_block(rd, "Forgatás 2:", 500, 600, 0);
+    render_text_block(rd, "Újraindítás:", 500, 650, 0);
+    render_text_block(rd, "Menüből kilépés:", 500, 700, 0);
+    render_text_block(rd, "Program lezárása:", 500, 750, 0);
 
     // TODO forgatás 1 2 helyett ccw cw?
 
-    render_text_block(rd, "A", 850, 350, 0x00000000);
-    render_text_block(rd, "D", 850, 400, 0x00000000);
-    render_text_block(rd, "S", 850, 450, 0x00000000);
-    render_text_block(rd, "W", 850, 500, 0x00000000);
-    render_text_block(rd, "I", 850, 550, 0x00000000);
-    render_text_block(rd, "O", 850, 600, 0x00000000);
-    render_text_block(rd, "ESC", 850, 650, 0x00000000);
-    render_text_block(rd, "ESC", 850, 700, 0x00000000);
-    render_text_block(rd, "Ablak lezárása", 850, 750, 0x00000000);
+    render_text_block(rd, "A", 850, 350, 0);
+    render_text_block(rd, "D", 850, 400, 0);
+    render_text_block(rd, "S", 850, 450, 0);
+    render_text_block(rd, "W", 850, 500, 0);
+    render_text_block(rd, "I", 850, 550, 0);
+    render_text_block(rd, "O", 850, 600, 0);
+    render_text_block(rd, "ESC", 850, 650, 0);
+    render_text_block(rd, "ESC", 850, 700, 0);
+    render_text_block(rd, "Ablak lezárása", 850, 750, 0);
 
     // TODO pontszámítás leírása
 }
@@ -96,9 +115,9 @@ static void render_starting_screen(CommonRenderData rd, int board_width, int boa
 bool rerender_plus_minus_button(CommonRenderData rd, char *button_text, int x, int y, bool *selected, bool in) {
     if (*selected != in) {
         if (in)
-            render_button(rd, button_text, x, y, 0xFF0000FF);
+            render_button(rd, button_text, x, y, 2);
         else
-            render_button(rd, button_text, x, y, 0x000000FF);
+            render_button(rd, button_text, x, y, 1);
         *selected = in;
         return true;
     }
@@ -115,6 +134,8 @@ int settings_loop(SDL_Renderer *renderer, TTF_Font *font, int *board_width, int 
     render_starting_screen(rd, *board_width, *board_height);
 
     SDL_RenderPresent(renderer);
+
+    bool held_left = false;
 
     bool selected_width_plus = false;
     bool selected_width_minus = false;
@@ -152,7 +173,8 @@ int settings_loop(SDL_Renderer *renderer, TTF_Font *font, int *board_width, int 
                 // TODO valami kilépés gomb? Innen könnyű lenne
             case SDL_MOUSEBUTTONDOWN:
                 // bal gomb lenyomására ha gombon van, csökkenti / növeli az adatot
-                if (event.button.button == SDL_BUTTON_LEFT) {
+                if (event.button.button == SDL_BUTTON_LEFT && !held_left) {
+                    held_left = true;
                     int x = event.motion.x;
                     int y = event.motion.y;
 
@@ -194,6 +216,11 @@ int settings_loop(SDL_Renderer *renderer, TTF_Font *font, int *board_width, int 
                         render_width_height_labels(rd, *board_width, *board_height);
                     }
                 }
+                break;
+            case SDL_MOUSEBUTTONUP:
+                // TODO ez a komment a fő fájlba is
+                // felengedni csak egyszer tudja
+                if (event.button.button == SDL_BUTTON_LEFT) held_left = false;
                 break;
             case SDL_KEYDOWN:
                 if (event.key.keysym.sym == SDLK_ESCAPE) {

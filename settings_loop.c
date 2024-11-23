@@ -17,28 +17,13 @@
 // 1: fekete
 // 2: piros
 
-static void render_button(CommonRenderData rd, char *button_text, int x, int y, int outline_color_code) {
-    // TODO itt is lehetne egybevonni az = jeleket
-    int r = 0, g = 0, b = 0, a = 0;
-
-    switch (outline_color_code) {
-        case 1:
-            a = 255;
-            break;
-        case 2:
-            r = 255;
-            a = 255;
-            break;
-        default:
-            printf("Invalid outline_color_code in settings_loop.c\n");
-            break;
-    }
-    // keret
-    boxRGBA(rd.renderer, x, y, x + 50, y + 50, r, g, b, a);
+static void render_button(CommonRenderData rd, char *button_text, int x, int y, SDL_Color outline_color) {
+    // átírtam de nem volt teszt
+    boxRGBA(rd.renderer, x, y, x + 50, y + 50, outline_color.r, outline_color.g, outline_color.b, outline_color.a);
     // közepét fehérre kell színezni, mert a + nem tölti ki a négyzetet
     boxRGBA(rd.renderer, x + 2, y + 2, x + 50 - 2, y + 50 - 2, 255, 255, 255, 255);
     // kézzel középre állított
-    render_text_block(rd, button_text, x + 17, y + 10, 0);
+    render_text_block(rd, button_text, x + 17, y + 10, COLOR_TRANSPARENT);
 }
 static void render_width_height_labels(CommonRenderData rd, int board_width, int board_height) {
     // alap állapot kirajzolása
@@ -54,8 +39,8 @@ static void render_width_height_labels(CommonRenderData rd, int board_width, int
     char height_label[] = "Magasság: 10";
     sprintf(height_label, "Magasság: %2d", board_height);
 
-    render_text_block(rd, width_label, 500, 200, 0);
-    render_text_block(rd, height_label, 850, 200, 0);
+    render_text_block(rd, width_label, 500, 200, COLOR_TRANSPARENT);
+    render_text_block(rd, height_label, 850, 200, COLOR_TRANSPARENT);
 }
 // kirajzolja első belépéskor a képernyőt
 static void render_starting_screen(CommonRenderData rd, int board_width, int board_height) {
@@ -70,42 +55,42 @@ static void render_starting_screen(CommonRenderData rd, int board_width, int boa
     render_width_height_labels(rd, board_width, board_height);
 
     // Szélesség + - gombjai
-    render_button(rd, "-", 500, 125, 1);
-    render_button(rd, "+", 684, 125, 1);
+    render_button(rd, "-", 500, 125, COLOR_BLACK);
+    render_button(rd, "+", 684, 125, COLOR_BLACK);
 
     // Magasság + - gombjai
-    render_button(rd, "-", 850, 125, 1);
-    render_button(rd, "+", 1016, 125, 1);
+    render_button(rd, "-", 850, 125, COLOR_BLACK);
+    render_button(rd, "+", 1016, 125, COLOR_BLACK);
 
     // Kilépő gomb
-    render_button(rd, "<", 125, 125, 1);
+    render_button(rd, "<", 125, 125, COLOR_BLACK);
 
     // Irányítások
 
     // ez legyen középen
-    render_text_block(rd, "Irányítások", 1600 / 2 - 198 / 2, 300, 0);
+    render_text_block(rd, "Irányítások", 1600 / 2 - 198 / 2, 300, COLOR_TRANSPARENT);
 
-    render_text_block(rd, "Balra:", 500, 350, 0);
-    render_text_block(rd, "Jobbra:", 500, 400, 0);
-    render_text_block(rd, "Lassú leejtés:", 500, 450, 0);
-    render_text_block(rd, "Gyors lerakás:", 500, 500, 0);
-    render_text_block(rd, "Forgatás 1:", 500, 550, 0);
-    render_text_block(rd, "Forgatás 2:", 500, 600, 0);
-    render_text_block(rd, "Újraindítás:", 500, 650, 0);
-    render_text_block(rd, "Menüből kilépés:", 500, 700, 0);
-    render_text_block(rd, "Program lezárása:", 500, 750, 0);
+    render_text_block(rd, "Balra:", 500, 350, COLOR_TRANSPARENT);
+    render_text_block(rd, "Jobbra:", 500, 400, COLOR_TRANSPARENT);
+    render_text_block(rd, "Lassú leejtés:", 500, 450, COLOR_TRANSPARENT);
+    render_text_block(rd, "Gyors lerakás:", 500, 500, COLOR_TRANSPARENT);
+    render_text_block(rd, "Forgatás 1:", 500, 550, COLOR_TRANSPARENT);
+    render_text_block(rd, "Forgatás 2:", 500, 600, COLOR_TRANSPARENT);
+    render_text_block(rd, "Újraindítás:", 500, 650, COLOR_TRANSPARENT);
+    render_text_block(rd, "Menüből kilépés:", 500, 700, COLOR_TRANSPARENT);
+    render_text_block(rd, "Program lezárása:", 500, 750, COLOR_TRANSPARENT);
 
     // TODO forgatás 1 2 helyett ccw cw?
 
-    render_text_block(rd, "A", 850, 350, 0);
-    render_text_block(rd, "D", 850, 400, 0);
-    render_text_block(rd, "S", 850, 450, 0);
-    render_text_block(rd, "W", 850, 500, 0);
-    render_text_block(rd, "I", 850, 550, 0);
-    render_text_block(rd, "O", 850, 600, 0);
-    render_text_block(rd, "ESC", 850, 650, 0);
-    render_text_block(rd, "ESC", 850, 700, 0);
-    render_text_block(rd, "Ablak lezárása", 850, 750, 0);
+    render_text_block(rd, "A", 850, 350, COLOR_TRANSPARENT);
+    render_text_block(rd, "D", 850, 400, COLOR_TRANSPARENT);
+    render_text_block(rd, "S", 850, 450, COLOR_TRANSPARENT);
+    render_text_block(rd, "W", 850, 500, COLOR_TRANSPARENT);
+    render_text_block(rd, "I", 850, 550, COLOR_TRANSPARENT);
+    render_text_block(rd, "O", 850, 600, COLOR_TRANSPARENT);
+    render_text_block(rd, "ESC", 850, 650, COLOR_TRANSPARENT);
+    render_text_block(rd, "ESC", 850, 700, COLOR_TRANSPARENT);
+    render_text_block(rd, "Ablak lezárása", 850, 750, COLOR_TRANSPARENT);
 
     // TODO pontszámítás leírása
 }
@@ -115,9 +100,9 @@ static void render_starting_screen(CommonRenderData rd, int board_width, int boa
 bool rerender_plus_minus_button(CommonRenderData rd, char *button_text, int x, int y, bool *selected, bool in) {
     if (*selected != in) {
         if (in)
-            render_button(rd, button_text, x, y, 2);
+            render_button(rd, button_text, x, y, COLOR_RED);
         else
-            render_button(rd, button_text, x, y, 1);
+            render_button(rd, button_text, x, y, COLOR_BLACK);
         *selected = in;
         return true;
     }
@@ -143,9 +128,10 @@ int settings_loop(SDL_Renderer *renderer, TTF_Font *font, int *board_width, int 
     bool selected_height_minus = false;
     bool selected_back = false;
 
-    // TODO in_[]-t kimozgatni eventek elé?
+    int return_code = -1;
+    bool quit = false;
     SDL_Event event;
-    while (SDL_WaitEvent(&event) && event.type != SDL_QUIT) {
+    while (SDL_WaitEvent(&event) && !quit) {
         bool draw = false;
         switch (event.type) {
             case SDL_MOUSEMOTION: {
@@ -155,20 +141,19 @@ int settings_loop(SDL_Renderer *renderer, TTF_Font *font, int *board_width, int 
 
                 // minden gombnak az y koordinátája egy helyen van, azaz elég egyszer tesztelni rá
                 bool in_y_range = 125 <= y && y <= 175;
-                if (in_y_range) {
-                    bool in_width_minus = 500 <= x && x <= 550;
-                    bool in_width_plus = 684 <= x && x <= 734;
-                    bool in_height_minus = 850 <= x && x <= 900;
-                    bool in_height_plus = 1016 <= x && x <= 1066;
-                    bool in_back = 125 <= x && x <= 175;
 
-                    // ha bármelyik igaz, akkor a rajzolja le
-                    draw = draw | rerender_plus_minus_button(rd, "-", 500, 125, &selected_width_minus, in_width_minus);
-                    draw = draw | rerender_plus_minus_button(rd, "+", 684, 125, &selected_width_plus, in_width_plus);
-                    draw = draw | rerender_plus_minus_button(rd, "-", 850, 125, &selected_height_minus, in_height_minus);
-                    draw = draw | rerender_plus_minus_button(rd, "+", 1016, 125, &selected_height_plus, in_height_plus);
-                    draw = draw | rerender_plus_minus_button(rd, "<", 125, 125, &selected_back, in_back);
-                }
+                bool in_width_minus = 500 <= x && x <= 550 && in_y_range;
+                bool in_width_plus = 684 <= x && x <= 734 && in_y_range;
+                bool in_height_minus = 850 <= x && x <= 900 && in_y_range;
+                bool in_height_plus = 1016 <= x && x <= 1066 && in_y_range;
+                bool in_back = 125 <= x && x <= 175 && in_y_range;
+
+                // ha bármelyik igaz, akkor a rajzolja le
+                draw = draw | rerender_plus_minus_button(rd, "-", 500, 125, &selected_width_minus, in_width_minus);
+                draw = draw | rerender_plus_minus_button(rd, "+", 684, 125, &selected_width_plus, in_width_plus);
+                draw = draw | rerender_plus_minus_button(rd, "-", 850, 125, &selected_height_minus, in_height_minus);
+                draw = draw | rerender_plus_minus_button(rd, "+", 1016, 125, &selected_height_plus, in_height_plus);
+                draw = draw | rerender_plus_minus_button(rd, "<", 125, 125, &selected_back, in_back);
             }
                 // TODO valami kilépés gomb? Innen könnyű lenne
             case SDL_MOUSEBUTTONDOWN:
@@ -179,58 +164,61 @@ int settings_loop(SDL_Renderer *renderer, TTF_Font *font, int *board_width, int 
                     int y = event.motion.y;
 
                     bool in_y_range = 125 <= y && y <= 175;
-                    if (in_y_range) {
-                        bool in_width_minus = 500 <= x && x <= 550;
-                        bool in_width_plus = 684 <= x && x <= 734;
-                        bool in_height_minus = 850 <= x && x <= 900;
-                        bool in_height_plus = 1016 <= x && x <= 1066;
-                        bool in_back = 125 <= x && x <= 175;
+                    bool in_width_minus = 500 <= x && x <= 550 && in_y_range;
+                    bool in_width_plus = 684 <= x && x <= 734 && in_y_range;
+                    bool in_height_minus = 850 <= x && x <= 900 && in_y_range;
+                    bool in_height_plus = 1016 <= x && x <= 1066 && in_y_range;
+                    bool in_back = 125 <= x && x <= 175 && in_y_range;
 
-                        if (in_width_minus)
-                            (*board_width)--;
-                        if (in_width_plus)
-                            (*board_width)++;
-                        if (in_height_minus)
-                            (*board_height)--;
-                        if (in_height_plus)
-                            (*board_height)++;
+                    if (in_width_minus)
+                        (*board_width)--;
+                    if (in_width_plus)
+                        (*board_width)++;
+                    if (in_height_minus)
+                        (*board_height)--;
+                    if (in_height_plus)
+                        (*board_height)++;
 
-                        if (in_back) return 1;
-
-                        // ha bármelyikben benne volt, rajzolja le
-                        draw = draw | in_width_minus;
-                        draw = draw | in_width_plus;
-                        draw = draw | in_height_minus;
-                        draw = draw | in_height_plus;
-
-                        // TODO jelezze a felhasználónak?
-                        // TODO ezek konstansokba?
-                        //  maximum és minimum értékek
-                        // TODO ezek csak randomak, megnézni jók-e, lehet e nagyobb range
-                        if (*board_width < 2) *board_width = 2;
-                        if (*board_width > 20) *board_width = 20;
-                        if (*board_height < 2) *board_height = 2;
-                        if (*board_height > 40) *board_height = 40;
-
-                        // TODO ne mindig mindkettőt renderelje
-                        render_width_height_labels(rd, *board_width, *board_height);
+                    if (in_back) {
+                        quit = true;
+                        return_code = 1;
                     }
+
+                    // ha bármelyikben benne volt, rajzolja le
+                    draw = draw | in_width_minus;
+                    draw = draw | in_width_plus;
+                    draw = draw | in_height_minus;
+                    draw = draw | in_height_plus;
+
+                    // TODO jelezze a felhasználónak?
+                    // TODO ezek konstansokba?
+                    //  maximum és minimum értékek
+                    // TODO ezek csak randomak, megnézni jók-e, lehet e nagyobb range
+                    if (*board_width < 2) *board_width = 2;
+                    if (*board_width > 20) *board_width = 20;
+                    if (*board_height < 2) *board_height = 2;
+                    if (*board_height > 40) *board_height = 40;
+
+                    // TODO ne mindig mindkettőt renderelje
+                    render_width_height_labels(rd, *board_width, *board_height);
                 }
                 break;
             case SDL_MOUSEBUTTONUP:
                 // TODO ez a komment a fő fájlba is
                 // felengedni csak egyszer tudja
-                if (event.button.button == SDL_BUTTON_LEFT) held_left = false;
+                if (event.button.button == SDL_BUTTON_LEFT)
+                    held_left = false;
                 break;
             case SDL_KEYDOWN:
                 if (event.key.keysym.sym == SDLK_ESCAPE) {
-                    // ha kap escape-et, akkor szabályosan kilép
-                    return 1;
+                    return_code = 1;
+                    quit = true;
                 }
                 break;
             case SDL_QUIT:
                 // kilép, mert a felhasználó lezárta az ablakot
-                return 0;
+                return_code = 0;
+                quit = true;
                 break;
             default:
                 // TODO
@@ -238,6 +226,5 @@ int settings_loop(SDL_Renderer *renderer, TTF_Font *font, int *board_width, int 
         }
         if (draw) SDL_RenderPresent(renderer);
     }
-    // ha lezárja az ablakot, akkor ide jut, kilép
-    return -1;
+    return return_code;
 }

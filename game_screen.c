@@ -9,7 +9,9 @@
 
 #include "debugmalloc.h"
 #include "game_loop.h"
+#include "game_over_loop.h"
 #include "game_render.h"
+#include "leaderboard_loop.h"
 #include "settings_loop.h"
 
 // visszaad egy random nem üres blokkot
@@ -122,7 +124,7 @@ static void free_game_state(GameState *game_state, int board_width, int board_he
 }
 // TODO más a neve, mást csinál
 // start_game_loop?
-int game_setup(SDL_Renderer *renderer, TTF_Font *font, int board_width, int board_height) {
+int game_setup(SDL_Renderer *renderer, TTF_Font *font, int board_width, int board_height, ScoreData *score_data) {
     // TODO vagy a többi init függvényét is itt megcsinálni, vagy ezt az initet is a game_loop.c-be rakni
 
     // TODO ez majd egy nagyobb loop, mindig a game_loop-ot indítja, return code alapján vált képernyőt
@@ -146,47 +148,50 @@ int game_setup(SDL_Renderer *renderer, TTF_Font *font, int board_width, int boar
     boxRGBA(renderer, 0, 0, 1600, 1000, 255, 255, 255, 255);
 
     // menügombok
-    render_text_block(rd, "Beállítások", 1300, 500, 1);
-    render_text_block(rd, "Ranglista", 1320, 600, 1);
+    render_text_block(rd, "Beállítások", 1300, 500, COLOR_BLACK);
+    render_text_block(rd, "Ranglista", 1320, 600, COLOR_BLACK);
 
     // játékállás kirajzolása
     render_game(rd, &game_state);
     int return_code = game_loop(rd, &game_state);
 
-    // tábla felszabadítása
+    // a pontszámok kimentése a fő függvénybe
+    *score_data = game_state.score_data;
+
+    // játékállás (tábla) felszabadítása
     free_game_state(&game_state, board_width, board_height);
 
     return return_code;
 }
 
 void menu_selector_loop(SDL_Renderer *renderer, TTF_Font *font) {
-    int return_code;
     int board_height = 12;
     int board_width = 6;
-    while (true) {
-        return_code = game_setup(renderer, font, board_width, board_height);
-        // hiba történt, vagy a felhasználó ki akar lépni
-        if (return_code == -1 || return_code == 0) {
-            break;
-        }
-        return_code = 1;
-        // ezek return code-ja csak az lehet, hogy hiba volt, vagy nem volt hiba, és visszatérhet a játékhoz
+    // a game_setup függvény a játékból kilépéskor átmásolja ide a pontszám adatokat
+    ScoreData score_data;
+
+    int return_code = 1;
+
+    while (!(return_code == 0 || return_code == -1)) {
         switch (return_code) {
             case 1:
-                return_code = settings_loop(renderer, font, &board_width, &board_height);
+                return_code = game_setup(renderer, font, board_width, board_height, &score_data);
                 break;
             case 2:
+                return_code = settings_loop(renderer, font, &board_width, &board_height);
                 break;
             case 3:
+                return_code = leaderboard_loop(renderer, font);
+                break;
+            case 4:
+                return_code = game_over_loop(renderer, font, score_data, board_width, board_height);
                 break;
             default:
+                // ha valami ismeretlen kódot kap, újraindítja a játékot
+                return_code = 1;
                 break;
         }
-        // kilép, mert hiba volt
-        // TODO elméletben nem kell már semmit se felszabadítani
-        // TODO írja a hibát?
-        if (return_code == -1) break;
-        // felhasználó lezárja az ablakot
-        if (return_code == 0) break;
     }
+
+    if (return_code == -1) printf("Varatlan hiba tortent.");
 }

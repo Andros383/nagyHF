@@ -5,19 +5,30 @@
 #include "stdio.h"
 #include "stdlib.h"
 
+// TODO kivenni, meg static
 void print_entry(Entry e) {
     printf("%s\t%d\t%d\t%d\t%d\t%d", e.name, e.score_data.score, e.score_data.longest_chain, e.score_data.placed_pieces, e.width, e.height);
 }
 
+// kiírja a tömböt
 // TODO kivenni?
 void debug_entries(Entries entries) {
     printf("Entries len: %d\n", entries.len);
     for (int i = 0; i < entries.len; i++) {
-        print_entry(entries.list[i]);
+        print_entry(entries.array[i]);
         printf("\n");
     }
 }
 
+// Visszaad egy üres entries típust
+Entries new_entries() {
+    Entries entries;
+    entries.array = NULL;
+    entries.len = 0;
+    return entries;
+}
+
+// felülírja a scores.txt-t a kapott pontszámokkal
 static bool write_entries(Entries entries) {
     FILE* fp = fopen("scores.txt", "w");
 
@@ -27,71 +38,81 @@ static bool write_entries(Entries entries) {
     }
 
     for (int i = 0; i < entries.len; i++) {
-        Entry e = entries.list[i];
+        Entry e = entries.array[i];
         fprintf(fp, "%s\t%d\t%d\t%d\t%d\t%d\n", e.name, e.score_data.score, e.score_data.longest_chain, e.score_data.placed_pieces, e.width, e.height);
     }
 
     fclose(fp);
+    return true;
 }
-bool add_entry(Entries* entries, Entry new_entry) {
-    Entry* new_list = (Entry*)malloc((entries->len + 1) * sizeof(Entry));
 
-    for (int i = 0; i < entries->len; i++) {
-        new_list[i] = entries->list[i];
+// hozzáad egy pontszámot a arraya végéhez
+// hamisat ad vissza, ha hiba történt
+static bool add_entry(Entries* entries, Entry new_entry) {
+    Entry* new_array = (Entry*)malloc((entries->len + 1) * sizeof(Entry));
+
+    if (new_array == NULL) {
+        // ne is lehessen használni
+        return false;
     }
 
-    new_list[entries->len] = new_entry;
-    // TODO ez megy?
-    entries->len++;
-    free(entries->list);
+    for (int i = 0; i < entries->len; i++) {
+        new_array[i] = entries->array[i];
+    }
 
-    entries->list = new_list;
+    new_array[entries->len] = new_entry;
+    entries->len++;
+
+    free(entries->array);
+
+    entries->array = new_array;
+    return true;
 }
+
+// beolvassa a scores.txt-ből a pontszámokat, és beleírja a kapott paraméterbe
+// használat után fel kell szabadítani az entries.array-et
 // hamisat ad vissza, ha hiba történt
 bool read_entries(Entries* entries) {
-    // Ha nem találja?
+    // TODO Ha nem találja? Így elméletben nem tud hibázni
     FILE* fp = fopen("scores.txt", "r");
     if (fp == NULL) {
-        // TODO itt mi van?
-        // hogyan tudom megkülönböztetni, hogy hiba volt a fájl megnyitásakor, vagy nem létezik?
-        // cppreferencen valami err flaget említenek
-
-        // Ha nincs ilyen file visszaad egy üres listát?
-
+        // nincs még fájl, visszaad egy üres array-t
         entries->len = 0;
-        entries->list = NULL;
+        entries->array = NULL;
         return true;
     }
 
-    int len = 0;
-    Entry* list = NULL;
-
     Entry current_entry;
-    while (fscanf(fp, "%s", current_entry.name) != EOF) {
-        // feltételezzük, hogy a fájl helyes-> működnek a beolvasások
+
+    while (true) {
+        char c;
+        int index = 0;
+
+        // ha az első karatker EOF, akkor vége a fájlnak, kilép a ciklusból
+        if (fscanf(fp, "%c", &c) == EOF) break;
+
+        // innentől nem kell nézni az EOF-eket, mert feltételezzük, hogy helyes a file
+
+        while (c != '\t') {
+            current_entry.name[index] = c;
+            index++;
+            fscanf(fp, "%c", &c);
+        }
+
+        current_entry.name[index] = '\0';
+
         fscanf(fp, "%d", &current_entry.score_data.score);
         fscanf(fp, "%d", &current_entry.score_data.longest_chain);
         fscanf(fp, "%d", &current_entry.score_data.placed_pieces);
         fscanf(fp, "%d", &current_entry.width);
         fscanf(fp, "%d", &current_entry.height);
 
-        Entry* new_list = (Entry*)malloc((len + 1) * sizeof(Entry));
+        bool success = add_entry(entries, current_entry);
+        if (!success) return false;
 
-        for (int i = 0; i < len; i++) {
-            new_list[i] = list[i];
-        }
-
-        new_list[len] = current_entry;
-        len++;
-        free(list);
-
-        list = new_list;
+        // utolsó enter beolvasása, hogy az új sor elején legyen a kurzor
+        fscanf(fp, "%c", &c);
     }
-
-    entries->len = len;
-    // TODO ez nem feltétlen kell,
-    free(entries->list);
-    entries->list = list;
 
     fclose(fp);
     return true;
@@ -99,17 +120,35 @@ bool read_entries(Entries* entries) {
 
 // az adatbázishoz hozzáad egy elemet, ha ilyen nevű még nem szerepelt
 // ha szerepelt, felülírja a pontszámát
+// hamisat ad vissza, ha hiba történt
 bool insert_entry(Entry new_entry) {
-    Entries entries;
+    Entries entries = new_entries();
     bool success = read_entries(&entries);
+
     if (!success) return false;
 
+    bool found = false;
     for (int i = 0; i < entries.len; i++) {
-        // ha ezzel a névvel már szerepel entry, csak átírjuk
-        if (strcmp(new_entry.name, entries.list[i].name) == 0) {
-            // TODO befejezni
+        // ha ezzel a névvel már szerepel entry, csak frissítjük az új értékre
+        if (strcmp(new_entry.name, entries.array[i].name) == 0) {
+            entries.array[i] = new_entry;
+            found = true;
         }
     }
 
-    success = add_entry(&entries, new_entry);
+    // ha nem találtuk, hozzáadjuk a arrayához
+    if (!found) {
+        success = add_entry(&entries, new_entry);
+        if (!success) {
+            // fel kell szabadítani az eddig lefoglalt memóriát
+            free(entries.array);
+            return false;
+        }
+    }
+
+    // új tömb beírása
+    write_entries(entries);
+
+    free(entries.array);
+    return true;
 }

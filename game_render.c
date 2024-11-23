@@ -53,33 +53,27 @@ CommonRenderData init_common_render_data(SDL_Renderer *renderer, TTF_Font *font,
 }
 
 // block-ban megkapja a blokk színét, ami alapján beállítja az rgb-t a színnek megfelelő értékekre
-static void set_RGB_from_block(Block block, int *r, int *g, int *b) {
+static SDL_Color get_color_from_block(Block block) {
     // alapvetően fekete
-    *r = 0;
-    *g = 0;
-    *b = 0;
 
     switch (block) {
         case RED:
-            *r = 255;
+            return COLOR_RED;
             break;
-
         case GREEN:
-            *g = 255;
+            return COLOR_GREEN;
             break;
-
         case BLUE:
-            *b = 255;
+            return COLOR_BLUE;
             break;
 
         case YELLOW:
-            *r = 255;
-            *g = 255;
+            return COLOR_YELLOW;
             break;
 
         default:
-            // 0, 0, 0-t ad vissza, teljesen fekete, könnyen észrevehető ha baj van
-            // TODO valaminek itt kell, hogy a háttér legyen?
+            // átlátszó ha EMTPY lenne
+            return COLOR_TRANSPARENT;
             break;
     }
 }
@@ -169,9 +163,8 @@ void render_board(CommonRenderData rd, Block **board) {
                 // alapozás
                 thickLineRGBA(rd.renderer, mid_x, mid_y, mid_x + rd.block_size, mid_y, connector_thickness, 0, 0, 0, 255);
                 // TODO rgb glob változó hogy ne foglalja le?
-                int r, g, b;
-                set_RGB_from_block(board[x][y], &r, &g, &b);
-                thickLineRGBA(rd.renderer, mid_x, mid_y, mid_x + rd.block_size, mid_y, connector_thickness - 2, r, g, b, 255);
+                SDL_Color color = get_color_from_block(board[x][y]);
+                thickLineRGBA(rd.renderer, mid_x, mid_y, mid_x + rd.block_size, mid_y, connector_thickness - 2, color.r, color.g, color.b, color.a);
             }
         }
     }
@@ -185,9 +178,9 @@ void render_board(CommonRenderData rd, Block **board) {
                 int mid_y = (rd.origin_y - rd.block_size / 2) - rd.block_size * y;
 
                 thickLineRGBA(rd.renderer, mid_x, mid_y, mid_x, mid_y - rd.block_size, connector_thickness, 0, 0, 0, 255);
-                int r, g, b;
-                set_RGB_from_block(board[x][y], &r, &g, &b);
-                thickLineRGBA(rd.renderer, mid_x, mid_y, mid_x, mid_y - rd.block_size, connector_thickness - 2, r, g, b, 255);
+
+                SDL_Color color = get_color_from_block(board[x][y]);
+                thickLineRGBA(rd.renderer, mid_x, mid_y, mid_x, mid_y - rd.block_size, connector_thickness - 2, color.r, color.g, color.b, color.a);
             }
         }
     }
@@ -200,24 +193,16 @@ void render_board(CommonRenderData rd, Block **board) {
                 int circle_middle_y = (rd.origin_y - rd.block_size / 2) - rd.block_size * y;
                 int radius = (rd.block_size / 2) * 0.9;  // TODO wild casting kiszedése
 
-                int r, g, b;
-                set_RGB_from_block(board[x][y], &r, &g, &b);
-                filledCircleRGBA(rd.renderer, circle_middle_x, circle_middle_y, radius - 1, r, g, b, 255);
+                SDL_Color color = get_color_from_block(board[x][y]);
+                filledCircleRGBA(rd.renderer, circle_middle_x, circle_middle_y, radius - 1, color.r, color.g, color.b, color.a);
             }
         }
     }
 }
 
-// rajzol egy szövegdobozt a megadott kerettel
-// outline_color_code állítja a keret színét, azért kód, mert csak három fajta keretszínt használok a programban
-// 0: nincs, 1: fekete, 2: piros
-void render_text_block(CommonRenderData rd, char *text, int x, int y, int outline_color_code) {
+// rajzol egy szövegdobozt outline_color színnel
+void render_text_block(CommonRenderData rd, char *text, int x, int y, SDL_Color outline_color) {
     // Source: infoc
-
-    // TODO egész refactor, hogy ne kelljen mindig megnyitni
-    // valszeg csak lesz egy nagy render struktúrám amiben MINDEN adat benne lesz
-    // csak legyen kész először is a programom valahogyan
-    // refaktor lehet utána
     TTF_Font *font = rd.font;
 
     SDL_Rect hova = {10, 10, 0, 0};
@@ -228,26 +213,7 @@ void render_text_block(CommonRenderData rd, char *text, int x, int y, int outlin
     hova.w = felirat->w;
     hova.h = felirat->h;
 
-    // háttérszín változói
-    // TODO egy db = 0? r= g= b= a= 0;
-    int r = 0, g = 0, b = 0, a = 0;
-    // ha 0 a code, akkor maradhat csupa 0
-    switch (outline_color_code) {
-        case 0:
-            break;
-        case 1:
-            a = 255;
-            break;
-        case 2:
-            r = 255;
-            a = 255;
-            break;
-        default:
-            printf("Invalid color code\n");
-            break;
-    }
-
-    boxRGBA(rd.renderer, hova.x - 2, hova.y - 2, hova.x + hova.w + 1, hova.y + hova.h + 1, r, g, b, a);
+    boxRGBA(rd.renderer, hova.x - 2, hova.y - 2, hova.x + hova.w + 1, hova.y + hova.h + 1, outline_color.r, outline_color.g, outline_color.b, outline_color.a);
     // printf("%s:\n %d %d %d %d -> %d\n", text, hova.x, hova.y, hova.x + hova.w, hova.y + hova.h, hova.w);
     // printf("%s outline:\n %d %d %d %d\n", text, hova.x - 2, hova.y - 2, hova.x + hova.w + 1, hova.y + hova.h + 1);
 
@@ -268,25 +234,23 @@ void render_queue(CommonRenderData rd, GameState *game_state) {
     int top_left_y = rd.origin_y - rd.board_height_px + block_size / 2;
 
     // kézzel állított értékek
+
     // első rész
     // keret
     boxRGBA(rd.renderer, top_left_x, top_left_y, top_left_x + block_size, top_left_y + block_size * 2, 0, 0, 0, 255);
     boxRGBA(rd.renderer, top_left_x + 2, top_left_y + 2, top_left_x + block_size - 2, top_left_y + block_size * 2 - 2, 255, 255, 255, 255);
 
-    // TODO alapból filled-et használok, vagy csak normált?
-    // a blokkok színezéséhez ideiglenesen használt változók
-    int r, g, b;
     // felső
     filledCircleRGBA(rd.renderer, top_left_x + block_size / 2, top_left_y + block_size / 2, block_size / 2 * 0.8, 0, 0, 0, 255);
 
-    set_RGB_from_block(game_state->queue[0].block1, &r, &g, &b);
-    filledCircleRGBA(rd.renderer, top_left_x + block_size / 2, top_left_y + block_size / 2, block_size / 2 * 0.8 - 1, r, g, b, 255);
-
+    // blokkok színezésére használt változó
+    SDL_Color color = get_color_from_block(game_state->queue[0].block1);
+    filledCircleRGBA(rd.renderer, top_left_x + block_size / 2, top_left_y + block_size / 2, block_size / 2 * 0.8 - 1, color.r, color.g, color.b, color.a);
     // alsó
     filledCircleRGBA(rd.renderer, top_left_x + block_size / 2, top_left_y + block_size * 3 / 2, block_size / 2 * 0.8, 0, 0, 0, 255);
 
-    set_RGB_from_block(game_state->queue[0].block2, &r, &g, &b);
-    filledCircleRGBA(rd.renderer, top_left_x + block_size / 2, top_left_y + block_size * 3 / 2, block_size / 2 * 0.8 - 1, r, g, b, 255);
+    color = get_color_from_block(game_state->queue[0].block2);
+    filledCircleRGBA(rd.renderer, top_left_x + block_size / 2, top_left_y + block_size * 3 / 2, block_size / 2 * 0.8 - 1, color.r, color.g, color.b, color.a);
 
     // TODO ha a 0.9-et átírom, itt a 2.5-ököt is
 
@@ -299,14 +263,14 @@ void render_queue(CommonRenderData rd, GameState *game_state) {
     // felső
     filledCircleRGBA(rd.renderer, top_left_x + block_size / 2, top_left_y + block_size / 2, block_size / 2 * 0.8, 0, 0, 0, 255);
 
-    set_RGB_from_block(game_state->queue[1].block1, &r, &g, &b);
-    filledCircleRGBA(rd.renderer, top_left_x + block_size / 2, top_left_y + block_size / 2, block_size / 2 * 0.8 - 1, r, g, b, 255);
+    color = get_color_from_block(game_state->queue[1].block1);
+    filledCircleRGBA(rd.renderer, top_left_x + block_size / 2, top_left_y + block_size / 2, block_size / 2 * 0.8 - 1, color.r, color.g, color.b, color.a);
 
     // alsó
     filledCircleRGBA(rd.renderer, top_left_x + block_size / 2, top_left_y + block_size * 3 / 2, block_size / 2 * 0.8, 0, 0, 0, 255);
 
-    set_RGB_from_block(game_state->queue[1].block2, &r, &g, &b);
-    filledCircleRGBA(rd.renderer, top_left_x + block_size / 2, top_left_y + block_size * 3 / 2, block_size / 2 * 0.8 - 1, r, g, b, 255);
+    color = get_color_from_block(game_state->queue[1].block2);
+    filledCircleRGBA(rd.renderer, top_left_x + block_size / 2, top_left_y + block_size * 3 / 2, block_size / 2 * 0.8 - 1, color.r, color.g, color.b, color.a);
 }
 
 // TODO GameState miért pointer? a többinek annak kéne lennie? Érték szerint fine átvenni, kb 30 byte
@@ -336,26 +300,19 @@ void render_game(CommonRenderData rd, GameState *game_state) {
         render_block_on_board(rd, ac.block2, ac.x2, ac.y2);
     }
 
-    // TODO sprintf max hosszos változata? többi helyen is
-    // leghosszabb string ami lehet
-    char score_label[] = "1000000000";
-    sprintf(score_label, "%010d", game_state->score_data.score);
-
     render_queue(rd, game_state);
 
-    // TODO legyen középen
-    // TODO legyen a táblához relatív jó helyen
-    // TODO táblához képest álljon?
+    // 50 karakter biztos elég
+    char label[50 + 1];
+    sprintf(label, "%010d", game_state->score_data.score);
+    render_text_block(rd, label, 720, rd.origin_y + 10, COLOR_TRANSPARENT);
+    // 720 középen van az általános szöveghosszokra
 
-    // jelenleg középen, tábla alja - 10
-    render_text_block(rd, score_label, 720, rd.origin_y + 10, 0);
+    sprintf(label, "Leghosszabb lánc: %2d", game_state->score_data.longest_chain);
+    render_text_block(rd, label, 100, 750, COLOR_TRANSPARENT);
 
-    // TODO ezek limitelése?
-    // ez ~40 perc játékidő 4-es pps-el
-    char placed_pieces_label[] = "Lerakott részek: 10000";
-    sprintf(placed_pieces_label, "Lerakott részek: %5d", game_state->score_data.placed_pieces);
-
-    render_text_block(rd, placed_pieces_label, 100, 800, 0);
+    sprintf(label, "Lerakott részek: %5d", game_state->score_data.placed_pieces);
+    render_text_block(rd, label, 100, 800, COLOR_TRANSPARENT);
 
     SDL_RenderPresent(renderer);
 }

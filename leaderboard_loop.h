@@ -5,4 +5,6 @@
 #include <SDL2/SDL2_gfxPrimitives.h>
 #include <SDL2/SDL_ttf.h>
 
+int leaderboard_loop(SDL_Renderer *renderer, TTF_Font *font);
+
 #endif

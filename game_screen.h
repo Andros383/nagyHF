@@ -45,7 +45,6 @@ typedef struct GameState {
     ScoreData score_data;
 } GameState;
 
-int game_setup(SDL_Renderer *renderer, TTF_Font *font, int board_width, int board_height);
 void menu_selector_loop(SDL_Renderer *renderer, TTF_Font *font);
 Piece gen_rand_piece();
 #endif

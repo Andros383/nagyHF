@@ -167,3 +167,45 @@ kommentes összefoglaló a fileok működéséről
 bevenni a megállító jeleket átnézésben a for ciklus feltételbe?
 pl az insert_entry-nél az átnézőben ami átírja az értékeket, hogy lépjen ki
 akkor már inkább break
+
+minden függvény, ami hibaértéked ad vissza, le van-e kezelve
+
+entries-ben a listet fel kell szabadítani
+game_render-t átnevezni általános render-re
+
+a headerek ifdefjei matchelnek a névvel
+
+WINDOW_WIDTH és HEIGHT #define a renderblockban
+
+hibaüzenet mindenhova valami egységes hibaüzenet kiíróval
+
+milyen hibánál mit kell csinálni, pl entriest mikor kell felszabadítani
+elméletileg nem baj, mert csak lefoglalja az elején, semmi se szabadítja fel, és majd felszabadítja a végén
+
+LÁNC- kiíírást átvinni a tábla bal felső sarkához
+
+pontszámot hármas tagolással írja ki, legalább a pontképernyőn?
+
+a hitboxok outline alapján mennek?
+
+névbe lehessen space
+
+return codeok, mi hogy lép ki
+nem returnol, hanem quit-et átállítja, mert foglal memóriát, és akkor mind legyen ugyan olyan
+
+SDL_Close - SDL-es dolgok lezárása
+
+táblaméretet egybe egy x x y formátuban
+
+labeleknek elég csak egy, mert temp label és ja
+sprintf ugyan abba ír bele
+
+grav idő alapján menjen -> más grav eventek alapján
+
+lehessen space a játékos nevében
+
+beírni a beállításokba a pontszámító formulát
+
+több név a toplistára
+
+entries.name a definiált max hosszal

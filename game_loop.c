@@ -172,10 +172,10 @@ int pop_groups(CommonRenderData rd, GameState *game_state, int chain_length, int
 
     // törlés közbeni rajzolások & elemek törlése a tábláról
     if (pop) {
-        char chain_label[] = "10-LÁNC";
+        char chain_label[50 + 1];
         sprintf(chain_label, "%2d-LÁNC", chain_length);
 
-        render_text_block(rd, chain_label, 100, 500, 0);
+        render_text_block(rd, chain_label, rd.origin_x - 150, 125, COLOR_BLACK);
 
         // TODO első híváskor van egy nagyon kicsi kör, meg kéne lennie egy megállásnak a teljes törléskor is
         for (int pop_anim_count = 1; pop_anim_count <= 3; pop_anim_count++) {
@@ -243,7 +243,10 @@ void gravity(GameState *game_state) {
 }
 
 // ténylegesen a táblára helyezi az aktív részt, majd rendezi a táblát (grav, chain)
-void lock_active_piece(CommonRenderData rd, GameState *game_state, int *nat_grav, int *upkick) {
+// -1: hiba történt
+// 0:  sikeres részlerakás
+// 1:  játék vége
+int lock_active_piece(CommonRenderData rd, GameState *game_state, int *nat_grav, int *upkick) {
     // TODO utánanézni ez jó-e, mert fura hogy reference-et ad át
     // gravitáció kikapcsolása, mert időbe kerül, mire az animáció lejátszódik
     SDL_Event lock_input_event;
@@ -275,10 +278,11 @@ void lock_active_piece(CommonRenderData rd, GameState *game_state, int *nat_grav
     // 0: nem volt törlés
     // -1: memóraifoglalási hiba
     int return_code = pop_groups(rd, game_state, chain_length + 1, &cleared_groups, &cleared_blocks);
-    // chain_length + 1-et kap, mert ha van lánc, akkor kirajzolja a lánc hosszát
+    if (return_code == -1) return -1;
+
+    // (chain_length + 1)-et kap, mert ha van lánc, akkor kirajzolja a lánc hosszát
 
     while (return_code != 0) {
-        // TODO -1 check, hogy volt-e hiba a foglalásban
         chain_length++;
         int mult = 1;
 
@@ -304,6 +308,7 @@ void lock_active_piece(CommonRenderData rd, GameState *game_state, int *nat_grav
 
         // következő iterációra az adatok előállítása
         return_code = pop_groups(rd, game_state, chain_length + 1, &cleared_groups, &cleared_blocks);
+        if (return_code == -1) return -1;
     }
 
     // TODO a leghosszabb lánc kiírása a render függvényben
@@ -330,19 +335,13 @@ void lock_active_piece(CommonRenderData rd, GameState *game_state, int *nat_grav
     *nat_grav = 0;
     *upkick = 0;
 
-    // TODO rövidebbre a sorokat?
     //  be tud-e jönni az aktív rész, ha nem -> Game Over
     bool block_1_allowed = game_state->board[game_state->active_piece.x1][game_state->active_piece.y1] == EMPTY;
     bool block_2_allowed = game_state->board[game_state->active_piece.x2][game_state->active_piece.y2] == EMPTY;
 
     if (!(block_1_allowed && block_2_allowed)) {
-        printf("Game Over\n");
-        // TODO game over megcsinálása
+        return 1;
     }
-
-    // TODO rendszerezni a pontkezelő függvényeket?
-    // talán saját fájlba a pont, sajátba a game_state, sajátba a render függvényeket
-    // és akkor egymást hivogatják
 
     // be kell hozni a billentyűzet eventjeit, különben az event be és kikapcsolása nem hatna rájuk
     // feltételezésem szerint csak wait event-kor kerülnek rá ténylegesen az SDL event sorra
@@ -351,10 +350,15 @@ void lock_active_piece(CommonRenderData rd, GameState *game_state, int *nat_grav
     // gravitáció visszakapcsolása
     lock_input_event.type = SDL_USEREVENT + 2;
     SDL_PushEvent(&lock_input_event);
+    return 0;
 }
 
 // az aktív részt letolja, amennyire tudja, majd le is rakja
-void hard_drop(CommonRenderData rd, GameState *game_state, int *nat_grav, int *upkick) {
+// visszatérési érték:
+// -1: hiba
+// 0:  sikeres lejjebblépés
+// 1:  játék vége
+int hard_drop(CommonRenderData rd, GameState *game_state, int *nat_grav, int *upkick) {
     Piece piece = game_state->active_piece;
 
     bool successful_downpush = true;
@@ -378,7 +382,13 @@ void hard_drop(CommonRenderData rd, GameState *game_state, int *nat_grav, int *u
     game_state->active_piece.y2 = piece.y2;
 
     // TODO lockolni a részt
-    lock_active_piece(rd, game_state, nat_grav, upkick);
+    int return_code = lock_active_piece(rd, game_state, nat_grav, upkick);
+    // hiba történt
+    if (return_code == -1) return -1;
+    // játék vége
+    if (return_code == 1) return 1;
+
+    return 0;
 }
 
 // úgy változtatja a játékállást, hogy az aktív rész eggyel lefele mozogjon
@@ -404,17 +414,27 @@ bool soft_drop(GameState *game_state) {
     // TODO lock, de nem biztos hogy ez fogja vezérelni, inkább majd az auto grav meg a hard drop
     return false;
 }
-// TODO talán a nat_grav és az upkicket berakni a game_state-be, vagy csak flag structot létrehozni?
-void natural_gravity(CommonRenderData rd, GameState *game_state, int *nat_grav, int *upkick) {
+// gravitáció miatt eggyel lejjebb lép az aktív rész
+// visszatérési érték
+// -1: hiba
+// 0:  sikeres lejjebblépés
+// 1:  játék vége
+int natural_gravity(CommonRenderData rd, GameState *game_state, int *nat_grav, int *upkick) {
     // lejjebb mozgatja a részt
     if (!soft_drop(game_state)) {
         // ha nem mozgott lejjebb, növeli a számlálót
         if (*nat_grav >= 3) {
             // ha elérte a határt, lehelyezi
-            lock_active_piece(rd, game_state, nat_grav, upkick);
+            int return_code = lock_active_piece(rd, game_state, nat_grav, upkick);
+            // hiba történt
+            if (return_code == -1) return -1;
+            // játék vége
+            if (return_code == 1) return 1;
         }
         (*nat_grav)++;
     }
+
+    return 0;
 }
 void move_left(GameState *game_state) {
     Piece piece = game_state->active_piece;
@@ -481,7 +501,7 @@ Uint32 gravity_timer(Uint32 ms, void *param) {
     int delay = 1250 - placed_pieces * 5;
     if (delay > 1000) delay = 1000;
     if (delay < 200) delay = 200;
-    printf("placed pieces: %d, delay: %d\n", placed_pieces, delay);
+    // printf("placed pieces: %d, delay: %d\n", placed_pieces, delay);
 
     return delay;
 }
@@ -521,7 +541,7 @@ int game_loop(CommonRenderData rd, GameState *game_state) {
     // persze létrehozáskor
     SDL_TimerID timerid_left;
     SDL_TimerID timerid_right;
-    SDL_TimerID timerid_soft = 0;
+    SDL_TimerID timerid_soft;
 
     bool held_left = false;
     bool held_right = false;
@@ -537,7 +557,7 @@ int game_loop(CommonRenderData rd, GameState *game_state) {
     int return_code = -1;
     bool quit = false;
     // kilépés mindig megy
-    while (SDL_WaitEvent(&event) && event.type != SDL_QUIT && !quit) {
+    while (SDL_WaitEvent(&event) && !quit) {
         // le kell-e rajzolni az egész képernyőt
         bool draw = false;
 
@@ -579,7 +599,17 @@ int game_loop(CommonRenderData rd, GameState *game_state) {
                 {
                     case SDLK_w:
                         if (!held_hard) {
-                            hard_drop(rd, game_state, &nat_grav, &upkick);
+                            int hd_return_code = hard_drop(rd, game_state, &nat_grav, &upkick);
+                            if (hd_return_code == -1) {
+                                // hiba
+                                quit = true;
+                                return_code = -1;
+                            }
+                            if (hd_return_code == 1) {
+                                // játék vége képernyő
+                                quit = true;
+                                return_code = 4;
+                            }
                             held_hard = true;
                             draw = true;
                         }
@@ -628,11 +658,10 @@ int game_loop(CommonRenderData rd, GameState *game_state) {
                         }
                         break;
                     case SDLK_ESCAPE:
-                        // TODO újraindítani a játékot
-#define GYORSKILEP
-#ifdef GYORSKILEP
-                        SDL_Quit();
-#endif
+                        // újraindítja magát
+                        return_code = 1;
+                        quit = true;
+
                         break;
 
                     default:
@@ -666,9 +695,19 @@ int game_loop(CommonRenderData rd, GameState *game_state) {
                         break;
                 }
                 break;
-            case SDL_USEREVENT:
+            case SDL_USEREVENT:;
                 // gravitáció
-                natural_gravity(rd, game_state, &nat_grav, &upkick);
+                int nd_return_code = natural_gravity(rd, game_state, &nat_grav, &upkick);
+                if (nd_return_code == -1) {
+                    // hiba
+                    quit = true;
+                    return_code = -1;
+                }
+                if (nd_return_code == 1) {
+                    // játék vége képernyő
+                    quit = true;
+                    return_code = 4;
+                }
                 draw = true;
 
                 break;
@@ -696,10 +735,10 @@ int game_loop(CommonRenderData rd, GameState *game_state) {
                 // amikor nem egyezik a rajzolt állapot a valóssal, akkor újra kell rajzolni
                 if (selected_settings != in_settings) {
                     if (in_settings) {
-                        // szürke keret, ha ki van választva
-                        render_text_block(rd, "Beállítások", 1300, 500, 2);
+                        // piros keret, ha ki van választva
+                        render_text_block(rd, "Beállítások", 1300, 500, COLOR_RED);
                     } else {
-                        render_text_block(rd, "Beállítások", 1300, 500, 1);
+                        render_text_block(rd, "Beállítások", 1300, 500, COLOR_BLACK);
                     }
                     selected_settings = in_settings;
                     // ha változott, ki kell rajzolni
@@ -707,9 +746,9 @@ int game_loop(CommonRenderData rd, GameState *game_state) {
                 }
                 if (selected_toplist != in_toplist) {
                     if (in_toplist) {
-                        render_text_block(rd, "Ranglista", 1320, 600, 2);
+                        render_text_block(rd, "Ranglista", 1320, 600, COLOR_RED);
                     } else {
-                        render_text_block(rd, "Ranglista", 1320, 600, 1);
+                        render_text_block(rd, "Ranglista", 1320, 600, COLOR_BLACK);
                     }
                     selected_toplist = in_toplist;
                     SDL_RenderPresent(rd.renderer);
@@ -722,28 +761,34 @@ int game_loop(CommonRenderData rd, GameState *game_state) {
                 bool in_settings = 1298 <= x && x <= 1499 && 498 <= y && y <= 533;
                 bool in_toplist = 1318 <= x && x <= 1483 && 598 <= y && y <= 633;
                 if (in_settings) {
+                    // beállítások menü
+                    return_code = 2;
                     quit = true;
-                    return_code = 1;
                 }
                 if (in_toplist) {
+                    // toplista menü
+                    return_code = 3;
                     quit = true;
-                    return_code = 2;
                 }
             } break;
+            case SDL_QUIT:
+                return_code = 0;
+                quit = true;
+                break;
             default:
                 break;
         }
 
-        // TODO ez nem igaz: teljes táblarajzolás, azaz meghívja a RenderClear()-t
         if (draw)
             render_game(rd, game_state);
     }
 
-    // TODO minden időzítő leállítása
-    // időzítő leállítása
+    // időzítők leállítása
     SDL_RemoveTimer(timerid_gravity);
+    SDL_RemoveTimer(timerid_left);
+    SDL_RemoveTimer(timerid_right);
+    SDL_RemoveTimer(timerid_soft);
 
-    // TODO ez csak placeholder return code
     return return_code;
 }
 
@@ -755,11 +800,12 @@ int game_loop(CommonRenderData rd, GameState *game_state) {
 // SDL_USEREVENT + 11: folyamatos jobbra lépés event
 // SDL_USEREVENT + 12: folyamatos soft drop event
 
-// mindig amikor ki akar lépni az event loopból egy kódrész beállítja a quit-et igazra, és a return_code-ot arra, ami a kilépéshez megfelel
+// mindig amikor ki akar lépni az event loopból egy kódrész beállítja a quit-et igazra, és a return_code-ot arra, ami a kilépésnek megfelel
 
 // return code-ok:
 // 0: felhasználó kilép x-el
-// 1: beállítások menü
-// 2: toplista menü
-// 3: Game Over screen
+// 1: újraindítás
+// 2: beállítások menü
+// 3: toplista menü
+// 4: Game Over screen
 // -1: memóriafoglalás / egyéb hiba

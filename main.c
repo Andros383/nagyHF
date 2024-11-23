@@ -12,12 +12,8 @@
 const int WINDOW_WIDTH = 1600;
 const int WINDOW_HEIGHT = 1000;
 
+// SDL miatt kell argc argv
 int main(int argc, char *argv[]) {
-    Entries e;
-    read_entries(&e);
-    debug_entries(e);
-    //
-    return 0;
     // TODO kivenni, meg nézni, megy-e
 
     // sdl setup

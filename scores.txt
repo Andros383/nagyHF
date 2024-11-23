@@ -1,2 +1,9 @@
-Andros	1123581321	14	230	6	12
-Bdrops	1123581321	14	230	6	12
+Falucskai	0	0	256	2001472	0
+András	0	0	6	6	12
+Kecske	0	0	6	6	12
+akl	15	1	8	6	12
+a	0	0	6	6	12
+adwknm	0	0	6	6	12
+waaléw	15	1	8	6	12
+Egy pillanat	70	2	16	6	12
+Macska Kecske	0	0	6	3	12

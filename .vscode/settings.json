@@ -11,6 +11,7 @@
 		"settings_loop.h": "c",
 		"time.h": "c",
 		"game_screen.h": "c",
-		"sdl_setup.h": "c"
+		"sdl_setup.h": "c",
+		"database.h": "c"
 	}
 }

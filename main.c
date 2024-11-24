@@ -11,18 +11,18 @@
 #include "sdl_setup.h"
 
 int main(int argc, char *argv[]) {
-    // sdl setup
-    SDL_Window *window;
-    SDL_Renderer *renderer;
-    TTF_Font *font;
-    sdl_init(WINDOW_WIDTH, WINDOW_HEIGHT, &window, &renderer, &font);
-
     // printf átirányítása a log file-ba
     // stdout-ra kerülnek a hibaüzenetek
     // stderr-re ír a debugmalloc, ha szükséges bekapcsolható
 
     freopen("log.txt", "w", stdout);
     // freopen("debugmalloc_log.txt", "w", stderr);
+
+    // sdl setup
+    SDL_Window *window;
+    SDL_Renderer *renderer;
+    TTF_Font *font;
+    sdl_init(WINDOW_WIDTH, WINDOW_HEIGHT, &window, &renderer, &font);
 
     // játék indítása
     menu_selector_loop(renderer, font);

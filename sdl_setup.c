@@ -27,7 +27,7 @@ void sdl_init(int szeles, int magas, SDL_Window **pwindow, SDL_Renderer **prende
     // szöveg kiírásához előkészület
     TTF_Init();
     *font = TTF_OpenFont("CONSOLAB.TTF", 32);
-    if (!font) {
+    if (*font == NULL) {
         printf("Nem sikerult megnyitni a fontot! %s\n", TTF_GetError());
         exit(1);
     }

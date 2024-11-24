@@ -1,5 +1,5 @@
-#ifndef GAME_SCREEN_H
-#define GAME_SCREEN_H
+#ifndef MENU_SELECTOR_H
+#define MENU_SELECTOR_H
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfxPrimitives.h>
@@ -13,8 +13,6 @@ typedef enum Block {
     YELLOW,
     EMPTY
 } Block;
-
-// TODO 0-tól indexelni? x0, x1, vagy így érthetőbb
 
 // egy rész, azaz két blokk
 // ha az előre látható queue-ban van, akkor a koordináták -1

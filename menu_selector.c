@@ -1,4 +1,4 @@
-#include "game_screen.h"
+#include "menu_selector.h"
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfxPrimitives.h>
@@ -10,8 +10,8 @@
 #include "debugmalloc.h"
 #include "game_loop.h"
 #include "game_over_loop.h"
-#include "game_render.h"
 #include "leaderboard_loop.h"
+#include "render.h"
 #include "settings_loop.h"
 
 // visszaad egy random nem üres blokkot
@@ -37,7 +37,6 @@ static Block gen_rand_block() {
     }
 }
 
-// public, mert kell a locknak
 // generál egy random részt, invalid koordinátákkal
 Piece gen_rand_piece() {
     Piece p;
@@ -58,41 +57,39 @@ Piece gen_rand_piece() {
 // minden számolt pont 0, az aktív rész és a queue már helyesen vannak kitöltve
 // visszaadja, hogy sikeres volt-e
 static bool init_game_state(GameState *game_state, int board_width, int board_height) {
+    // játéktábla lefoglalása
     game_state->board = (Block **)malloc(board_width * sizeof(Block *));
     if (game_state->board == NULL) {
-        fprintf(stderr, "Sikertelen memoriafoglalas @ game_state->board\n");
+        printf("init_game_state: sikertelen memoriafoglalas\n");
         return false;
     }
 
     for (int x = 0; x < board_width; x++) {
         game_state->board[x] = (Block *)malloc(board_height * sizeof(Block));
         if (game_state->board[x] == NULL) {
-            // TODO stderr-re kell majd kirakni?
-            fprintf(stderr, "Sikertelen memoriafoglalas @ game_state->board[i]\n");
-
+            printf("init_game_state: sikertelen memoriafoglalas\n");
             // előző oszlopok felszabadítása
             for (int i = 0; i < x; i++) {
                 free(game_state->board[i]);
             }
             // egész tábla felszabadítása
             free(game_state->board);
-
             // nem sikerült inicializálni
             return false;
         }
     }
 
-    // Nullázás
+    // tábla nullázása
     for (int x = 0; x < board_width; x++) {
         for (int y = 0; y < board_height; y++) {
             game_state->board[x][y] = EMPTY;
         }
     }
-
+    // magasság és szélesség beállítása
     game_state->board_width = board_width;
     game_state->board_height = board_height;
 
-    // random rész generálása
+    // aktív rész generálása
     game_state->active_piece = gen_rand_piece();
 
     // aktív rész koordinátáit be kell állítani
@@ -101,51 +98,40 @@ static bool init_game_state(GameState *game_state, int board_width, int board_he
     game_state->active_piece.y1 = board_height - 1;
     game_state->active_piece.y2 = board_height - 2;
 
-    // queue generálása
+    // soron következő részek generálása
     game_state->queue[0] = gen_rand_piece();
     game_state->queue[1] = gen_rand_piece();
 
+    // pontszámok nullázása
     game_state->score_data.longest_chain = 0;
     game_state->score_data.placed_pieces = 0;
     game_state->score_data.score = 0;
 
-    // sikeres inicializálás
     return true;
 }
-
+// felszabadítja a játékállást, pontosabban a játéktáblát
 static void free_game_state(GameState *game_state, int board_width, int board_height) {
     for (int i = 0; i < board_width; i++) {
         free(game_state->board[i]);
-        // TODO ez az indexelés a jó? mmint op precedence
-        // elm igen, de -> és a [] egy szinten van
-        // https://en.cppreference.com/w/c/language/operator_precedence
     }
     free(game_state->board);
 }
-// TODO más a neve, mást csinál
-// start_game_loop?
-int game_setup(SDL_Renderer *renderer, TTF_Font *font, int board_width, int board_height, ScoreData *score_data) {
-    // TODO vagy a többi init függvényét is itt megcsinálni, vagy ezt az initet is a game_loop.c-be rakni
-
-    // TODO ez majd egy nagyobb loop, mindig a game_loop-ot indítja, return code alapján vált képernyőt
-    // többi menüből kilépve mindig újraindítja a game_loop-ot, lefoglalja a dolgokat.
-
+// felállítja a játéktáblát, valamint az első képernyőt kirajzolja
+static int game_setup(SDL_Renderer *renderer, TTF_Font *font, int board_width, int board_height, ScoreData *score_data) {
     srand(time(NULL));  // randomizálás beállítása
 
-    // TODO pontosan a közepére, a renderben van debug rá
-
+    // játékállás felvétele
     GameState game_state;
-    bool success = init_game_state(&game_state, board_width, board_height);
 
+    bool success = init_game_state(&game_state, board_width, board_height);
     if (!success) return -1;
 
     // rajzoláshoz szükséges adatok
     CommonRenderData rd = init_common_render_data(renderer, font, &game_state);
 
-    // első állapot megrajzolása
-    // TODO width és height behozása mind glob konstans
+    // első képernyő megrajzolása
     // fehér háttér
-    boxRGBA(renderer, 0, 0, 1600, 1000, 255, 255, 255, 255);
+    boxRGBA(renderer, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 255, 255, 255, 255);
 
     // menügombok
     render_text_block(rd, "Beállítások", 1300, 500, COLOR_BLACK);
@@ -153,6 +139,8 @@ int game_setup(SDL_Renderer *renderer, TTF_Font *font, int board_width, int boar
 
     // játékállás kirajzolása
     render_game(rd, &game_state);
+
+    // játék indítása
     int return_code = game_loop(rd, &game_state);
 
     // a pontszámok kimentése a fő függvénybe
@@ -164,6 +152,13 @@ int game_setup(SDL_Renderer *renderer, TTF_Font *font, int board_width, int boar
     return return_code;
 }
 
+// különböző képernyők közötti választás return_code alapján
+// -1: kilépés hiba miatt
+// 0:  kilépés X-el
+// 1:  játékképernyő
+// 2:  beállítások
+// 3:  ranglista
+// 4:  játék vége képernyő
 void menu_selector_loop(SDL_Renderer *renderer, TTF_Font *font) {
     int board_height = 12;
     int board_width = 6;
@@ -187,11 +182,15 @@ void menu_selector_loop(SDL_Renderer *renderer, TTF_Font *font) {
                 return_code = game_over_loop(renderer, font, score_data, board_width, board_height);
                 break;
             default:
-                // ha valami ismeretlen kódot kap, újraindítja a játékot
-                return_code = 1;
+                // ha valami ismeretlen kódot kap, jelzi
+                printf("menu_selector_loop: ismeretlen visszateresi kod\n");
+                return_code = -1;
                 break;
         }
     }
 
-    if (return_code == -1) printf("Varatlan hiba tortent.");
+    if (return_code == -1)
+        printf("Hiba tortent, program leallitasa.\n");
+    else
+        printf("A program hiba nelkul kilepett.\n");
 }

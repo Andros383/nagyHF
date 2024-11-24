@@ -7,51 +7,36 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "game_render.h"
+#include "debugmalloc.h"
+#include "render.h"
 
 // a + és - gombok rajzolásának segítésére
 // kirajzol egy 50*50-es gombot, egy karakterrel a közepén
 // a button_text itt vagy "+" vagy "-"
 // x, y a bal felső sarok koordinátái
-// border_outline_code a keret színe kód alapján, a render_text_block alapján
-// 1: fekete
-// 2: piros
-
+// outline_code a keret színe
 static void render_button(CommonRenderData rd, char *button_text, int x, int y, SDL_Color outline_color) {
-    // átírtam de nem volt teszt
     boxRGBA(rd.renderer, x, y, x + 50, y + 50, outline_color.r, outline_color.g, outline_color.b, outline_color.a);
     // közepét fehérre kell színezni, mert a + nem tölti ki a négyzetet
     boxRGBA(rd.renderer, x + 2, y + 2, x + 50 - 2, y + 50 - 2, 255, 255, 255, 255);
     // kézzel középre állított
     render_text_block(rd, button_text, x + 17, y + 10, COLOR_TRANSPARENT);
 }
+// Magasság és szélesség szövegek kirajzolása
 static void render_width_height_labels(CommonRenderData rd, int board_width, int board_height) {
-    // alap állapot kirajzolása
+    char label[50 + 1];
+    sprintf(label, "Szélesség: %2d", board_width);
+    render_text_block(rd, label, 500, 200, COLOR_TRANSPARENT);
 
-    // TODO wacky string kezelés
-
-    // két számjegy
-    // felveszi a leghosszabb stringet, amit majd ki fog írni
-    char width_label[] = "Szélesség: 10";
-    // beállítja a szélességet
-    sprintf(width_label, "Szélesség: %2d", board_width);
-
-    char height_label[] = "Magasság: 10";
-    sprintf(height_label, "Magasság: %2d", board_height);
-
-    render_text_block(rd, width_label, 500, 200, COLOR_TRANSPARENT);
-    render_text_block(rd, height_label, 850, 200, COLOR_TRANSPARENT);
+    sprintf(label, "Magasság: %2d", board_height);
+    render_text_block(rd, label, 850, 200, COLOR_TRANSPARENT);
 }
 // kirajzolja első belépéskor a képernyőt
-static void render_starting_screen(CommonRenderData rd, int board_width, int board_height) {
-    // TODO valami táblázatszerűvé csinálás? vonalakkal meg minden
-
-    // TODO width és height behozása mind glob konstans
+static void starting_render(CommonRenderData rd, int board_width, int board_height) {
     // fehér háttér
-    boxRGBA(rd.renderer, 0, 0, 1600, 1000, 255, 255, 255, 255);
+    boxRGBA(rd.renderer, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 255, 255, 255, 255);
 
-    // alap állapot kirajzolása
-
+    // Magasság és Szélesség kirajzolása
     render_width_height_labels(rd, board_width, board_height);
 
     // Szélesség + - gombjai
@@ -65,10 +50,8 @@ static void render_starting_screen(CommonRenderData rd, int board_width, int boa
     // Kilépő gomb
     render_button(rd, "<", 125, 125, COLOR_BLACK);
 
-    // Irányítások
-
-    // ez legyen középen
-    render_text_block(rd, "Irányítások", 1600 / 2 - 198 / 2, 300, COLOR_TRANSPARENT);
+    // Irányítások, pontszámítás
+    render_text_block(rd, "Irányítások", 701, 300, COLOR_TRANSPARENT);
 
     render_text_block(rd, "Balra:", 500, 350, COLOR_TRANSPARENT);
     render_text_block(rd, "Jobbra:", 500, 400, COLOR_TRANSPARENT);
@@ -80,8 +63,6 @@ static void render_starting_screen(CommonRenderData rd, int board_width, int boa
     render_text_block(rd, "Menüből kilépés:", 500, 700, COLOR_TRANSPARENT);
     render_text_block(rd, "Program lezárása:", 500, 750, COLOR_TRANSPARENT);
 
-    // TODO forgatás 1 2 helyett ccw cw?
-
     render_text_block(rd, "A", 850, 350, COLOR_TRANSPARENT);
     render_text_block(rd, "D", 850, 400, COLOR_TRANSPARENT);
     render_text_block(rd, "S", 850, 450, COLOR_TRANSPARENT);
@@ -92,12 +73,13 @@ static void render_starting_screen(CommonRenderData rd, int board_width, int boa
     render_text_block(rd, "ESC", 850, 700, COLOR_TRANSPARENT);
     render_text_block(rd, "Ablak lezárása", 850, 750, COLOR_TRANSPARENT);
 
-    // TODO pontszámítás leírása
+    render_text_block(rd, "Minden törlési lépés után kapott pontszám:", 422, 850, COLOR_TRANSPARENT);
+    render_text_block(rd, "2^(lánclépés-1) * (10 * törölt csoportok + törölt blokkok)", 278, 900, COLOR_TRANSPARENT);
 }
 
-// az alapján, hogy előzőleg rajta volt-e az egér, és hogy most rajta van-e az egér újrarajzolja a megfelelő gombot
+// gombok újrarajzolása az alapján, hogy rajta van-e és volt-e az egér
 // visszaadja, rajzolt-e
-bool rerender_plus_minus_button(CommonRenderData rd, char *button_text, int x, int y, bool *selected, bool in) {
+static bool rerender_plus_minus_button(CommonRenderData rd, char *button_text, int x, int y, bool *selected, bool in) {
     if (*selected != in) {
         if (in)
             render_button(rd, button_text, x, y, COLOR_RED);
@@ -110,18 +92,19 @@ bool rerender_plus_minus_button(CommonRenderData rd, char *button_text, int x, i
 }
 
 int settings_loop(SDL_Renderer *renderer, TTF_Font *font, int *board_width, int *board_height) {
-    // TODO szebb lenne külön függvényt írni neki?
-    // nem fogja használni a táblamérethez kapcsolódó dolgokat
+    // nem fogja használni, csak a renderer és font változókat
     CommonRenderData rd;
     rd.renderer = renderer;
     rd.font = font;
 
-    render_starting_screen(rd, *board_width, *board_height);
-
+    // kezdőképernyő kirajzolása
+    starting_render(rd, *board_width, *board_height);
     SDL_RenderPresent(renderer);
 
+    // bal egérgomb le van-e nyomva
     bool held_left = false;
 
+    // gombok ki vannak-e választva
     bool selected_width_plus = false;
     bool selected_width_minus = false;
     bool selected_height_plus = false;
@@ -154,10 +137,9 @@ int settings_loop(SDL_Renderer *renderer, TTF_Font *font, int *board_width, int 
                 draw = draw | rerender_plus_minus_button(rd, "-", 850, 125, &selected_height_minus, in_height_minus);
                 draw = draw | rerender_plus_minus_button(rd, "+", 1016, 125, &selected_height_plus, in_height_plus);
                 draw = draw | rerender_plus_minus_button(rd, "<", 125, 125, &selected_back, in_back);
-            }
-                // TODO valami kilépés gomb? Innen könnyű lenne
+            } break;
             case SDL_MOUSEBUTTONDOWN:
-                // bal gomb lenyomására ha gombon van, csökkenti / növeli az adatot
+                // bal kattintásra növeli/csökkenti a magasságot/szélességet
                 if (event.button.button == SDL_BUTTON_LEFT && !held_left) {
                     held_left = true;
                     int x = event.motion.x;
@@ -184,44 +166,38 @@ int settings_loop(SDL_Renderer *renderer, TTF_Font *font, int *board_width, int 
                         return_code = 1;
                     }
 
-                    // ha bármelyikben benne volt, rajzolja le
+                    // ha bármelyikben benne volt, újrarajzolja
                     draw = draw | in_width_minus;
                     draw = draw | in_width_plus;
                     draw = draw | in_height_minus;
                     draw = draw | in_height_plus;
 
-                    // TODO jelezze a felhasználónak?
-                    // TODO ezek konstansokba?
-                    //  maximum és minimum értékek
-                    // TODO ezek csak randomak, megnézni jók-e, lehet e nagyobb range
                     if (*board_width < 2) *board_width = 2;
                     if (*board_width > 20) *board_width = 20;
                     if (*board_height < 2) *board_height = 2;
                     if (*board_height > 40) *board_height = 40;
 
-                    // TODO ne mindig mindkettőt renderelje
                     render_width_height_labels(rd, *board_width, *board_height);
                 }
                 break;
             case SDL_MOUSEBUTTONUP:
-                // TODO ez a komment a fő fájlba is
-                // felengedni csak egyszer tudja
+                // felengedni csak egyszer lehet
                 if (event.button.button == SDL_BUTTON_LEFT)
                     held_left = false;
                 break;
             case SDL_KEYDOWN:
+                // ESC-re kilép a játékképernyőre
                 if (event.key.keysym.sym == SDLK_ESCAPE) {
                     return_code = 1;
                     quit = true;
                 }
                 break;
             case SDL_QUIT:
-                // kilép, mert a felhasználó lezárta az ablakot
+                // kilép X lenyomására
                 return_code = 0;
                 quit = true;
                 break;
             default:
-                // TODO
                 break;
         }
         if (draw) SDL_RenderPresent(renderer);

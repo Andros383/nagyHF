@@ -4,23 +4,15 @@
 #include <stdio.h>
 
 #include "debugmalloc.h"
-#include "game_screen.h"
+#include "menu_selector.h"
 
-// TODO itt sok a másolt kód, más-más néven van ugyan az elmentve, de legalább érthető?
-
-// külön fájlban van, mert nem tetszett mennyi helyet foglalt
-// úgy változtatja a játékállást, hogy a rész egyet óramutató állásával megegyezően forogjon
+// aktív rész óramutató járásával megegyező forgatása
 // ha a forgatás nem lehetséges, eltolja a részt, vagy nem forgatja el
 // megfelelő forgatásnál számolja, hogy ne tudjon végtelenszer felfelé forogni
 void rotate_cw(GameState *game_state, int *upkick) {
     Piece piece = game_state->active_piece;
-    // hogy ne legyen más meghívva, a piece forgatása után returnol
-    // TODO inkább case?
+    // esetszétválasztás a két blokk egymáshoz való helyzete alapján
 
-    // TODO szétszedni több függvényre?
-    //  TODO kick limit
-
-    // block 1 block 2-höz képest:
     // felette -> jobbra lesz tőle, csak balra tudja elrúgni magát
     if (piece.y1 > piece.y2) {
         // ahova mozog a forgó rész
@@ -92,8 +84,6 @@ void rotate_cw(GameState *game_state, int *upkick) {
 
         bool kick = false;
 
-        // TODO talán jobb lenne negáltat nézni? Mikor nem tud rúgni? Így biztosan érthető
-
         // jobbra rúg padló miatt
         if (hova_x < 0) {
             kick = true;
@@ -104,7 +94,6 @@ void rotate_cw(GameState *game_state, int *upkick) {
 
         if (kick) {
             // nem rúg le a tábláról
-            // ITT IS VOLT VÁLTOZTATÁS
             if (piece.x2 + 1 < game_state->board_width) {
                 // tud rúgni
                 if (game_state->board[piece.x2 + 1][piece.y2] == EMPTY) {
@@ -137,7 +126,6 @@ void rotate_cw(GameState *game_state, int *upkick) {
 
         if (kick) {
             // nem rúg le a tábláról
-            // TODO ITT IS VOLT VÁLTOZTATÁS
             if (piece.y2 + 1 < game_state->board_height) {
                 // ha még nem rúgott túl sokszor fel
                 if (*upkick < 3) {
@@ -159,16 +147,16 @@ void rotate_cw(GameState *game_state, int *upkick) {
 
         return;
     }
-    // TODO ezt kivenni, jelezni
-    printf("Ide nem kéne eljutni.");
+    // ide nem tud eljutni, mert a két blokk egymáshoz képesti mind a négy esetét vizsgáltuk
+    printf("rotate_cw: lehetetlen helyzetben levo aktiv resz, nem lep ki a program\n");
 }
+// aktív rész óramutató járásával ellentétes forgatása
+// ha a forgatás nem lehetséges, eltolja a részt, vagy nem forgatja el
+// megfelelő forgatásnál számolja, hogy ne tudjon végtelenszer felfelé forogni
 void rotate_ccw(GameState *game_state, int *upkick) {
     Piece piece = game_state->active_piece;
-    // ha kész van a rész forgatásával return-ol
+    // esetszétválasztás a két blokk egymáshoz való helyzete alapján
 
-    // TODO kick limit
-
-    // block 1 block 2-höz képest:
     // felette -> balra lesz tőle, csak jobbra tudja elrúgni magát
     if (piece.y1 > piece.y2) {
         // ahova mozog a forgó rész
@@ -205,7 +193,6 @@ void rotate_ccw(GameState *game_state, int *upkick) {
     }
     // balra -> felfele tud rúgni
     if (piece.x1 < piece.x2) {
-        // TODO felrugásokra limit
         int hova_x = piece.x1 + 1;
         int hova_y = piece.y1 - 1;
 
@@ -220,7 +207,6 @@ void rotate_ccw(GameState *game_state, int *upkick) {
         }
 
         if (kick) {
-            // TODO ITT VOLT BÁLTOZTATÁS
             // nem rúg le a tábláról
             if (piece.y2 + 1 < game_state->board_height) {
                 // ha még nem rúgott túl sokszor fel
@@ -304,6 +290,7 @@ void rotate_ccw(GameState *game_state, int *upkick) {
         }
         return;
     }
-    // TODO ezt kivenni
-    printf("Ide nem kéne eljutni.");
+
+    // ide nem tud eljutni, mert a két blokk egymáshoz képesti mind a négy esetét vizsgáltuk
+    printf("rotate_ccw: lehetetlen helyzetben levo aktiv resz, nem lep ki a program\n");
 }

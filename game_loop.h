@@ -4,7 +4,8 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfxPrimitives.h>
 
-#include "game_render.h"
-#include "game_screen.h"
+#include "menu_selector.h"
+#include "render.h"
+
 int game_loop(CommonRenderData rd, GameState *game_state);
 #endif

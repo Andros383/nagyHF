@@ -10,29 +10,45 @@
 /* ablak megnyitasa */
 void sdl_init(int szeles, int magas, SDL_Window **pwindow, SDL_Renderer **prenderer, TTF_Font **font) {
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
-        SDL_Log("Nem indithato az SDL: %s", SDL_GetError());
+        printf("Nem indithato az SDL: %s", SDL_GetError());
         exit(1);
     }
-    SDL_Window *window = SDL_CreateWindow("SDL peldaprogram", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, szeles, magas, 0);
+    SDL_Window *window = SDL_CreateWindow("Puyo Puyo", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, szeles, magas, 0);
     if (window == NULL) {
-        SDL_Log("Nem hozhato letre az ablak: %s", SDL_GetError());
+        printf("Nem hozhato letre az ablak: %s", SDL_GetError());
         exit(1);
     }
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
     if (renderer == NULL) {
-        SDL_Log("Nem hozhato letre a megjelenito: %s", SDL_GetError());
+        printf("Nem hozhato letre a megjelenito: %s", SDL_GetError());
         exit(1);
     }
 
     // szöveg kiírásához előkészület
     TTF_Init();
-    *font = TTF_OpenFont("fonts/CONSOLAB.TTF", 32);
+    *font = TTF_OpenFont("CONSOLAB.TTF", 32);
+    if (!font) {
+        printf("Nem sikerult megnyitni a fontot! %s\n", TTF_GetError());
+        exit(1);
+    }
 
-    // TODO render törlése, lehet nem kell majd
     SDL_RenderClear(renderer);
 
     *pwindow = window;
     *prenderer = renderer;
+}
+// Forrás: InfoC
+void sdl_close(SDL_Window **pwindow, SDL_Renderer **prenderer, TTF_Font **pfont) {
+    SDL_DestroyRenderer(*prenderer);
+    *prenderer = NULL;
+
+    SDL_DestroyWindow(*pwindow);
+    *pwindow = NULL;
+
+    TTF_CloseFont(*pfont);
+    *pfont = NULL;
+
+    SDL_Quit();
 }
 
 // Forrás: InfoC

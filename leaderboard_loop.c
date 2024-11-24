@@ -8,9 +8,13 @@
 #include <stdlib.h>
 
 #include "database.h"
-#include "game_render.h"
-void render_entry(CommonRenderData rd, int y, Entry e) {
-    render_text_block(rd, e.name, 200, y, COLOR_TRANSPARENT);
+#include "debugmalloc.h"
+#include "render.h"
+
+#define SHOWN_NAMES 15
+// egy eredmény kirajzolása
+static void render_entry(CommonRenderData rd, int y, Entry e) {
+    render_text_block(rd, e.name, 100, y, COLOR_TRANSPARENT);
 
     // többi adat nem string formátumú
     char tmp[50 + 1];
@@ -24,23 +28,19 @@ void render_entry(CommonRenderData rd, int y, Entry e) {
     sprintf(tmp, "%d", e.score_data.placed_pieces);
     render_text_block(rd, tmp, 1000, y, COLOR_TRANSPARENT);
 
-    sprintf(tmp, "%d", e.width);
+    sprintf(tmp, "%d x %d", e.width, e.height);
     render_text_block(rd, tmp, 1200, y, COLOR_TRANSPARENT);
-
-    sprintf(tmp, "%d", e.height);
-    render_text_block(rd, tmp, 1400, y, COLOR_TRANSPARENT);
 }
-// TODO Entries felszabadítása ha kész
-// kirajzolja a top 10 pontszámot a rendezési tömb alapján
-// ha a tömbben -1 van, onnantól már nincs megjelenítendő pontszám
-void render_entries(CommonRenderData rd, Entries entries, int sorted[10]) {
+// kirajzolja a legjobb pontszámokat a rendezési tömb alapján
+// ha a rendezési tömbben -1 van, már nincs megjelenítendő pontszám
+static void render_entries(CommonRenderData rd, Entries entries, int sorted[SHOWN_NAMES]) {
     // a pontszámok helyének törlése
     boxRGBA(rd.renderer, 0, 175, 1600, 1000, 255, 255, 255, 255);
 
     int y = 200;
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < SHOWN_NAMES; i++) {
         int pos = sorted[i];
-        // a többi adat innentől szemét, mert nincs elég érték a ranglistán
+        // a többi adat innentől szemét, mert nincs elég eredmény a ranglistán
         if (pos == -1) break;
 
         Entry e = entries.array[pos];
@@ -53,7 +53,7 @@ void render_entries(CommonRenderData rd, Entries entries, int sorted[10]) {
 // 0: pontszám
 // 1: leghosszabb lánc
 // 2: lerakott részek
-void render_buttons(CommonRenderData rd, int sorted_by) {
+static void render_buttons(CommonRenderData rd, int sorted_by) {
     // vissza gomb koordinátái a rajzoláshoz
     int x_back = 25;
     int y_back = 25;
@@ -62,11 +62,9 @@ void render_buttons(CommonRenderData rd, int sorted_by) {
     render_text_block(rd, "<", x_back + 17, y_back + 10, COLOR_TRANSPARENT);
 
     // nincs kerete a gombnak, ha nem kattintható
-    render_text_block(rd, "Név", 200, 100, COLOR_TRANSPARENT);
-    render_text_block(rd, "Szélesség", 1200, 100, COLOR_TRANSPARENT);
-    render_text_block(rd, "Magasság", 1400, 100, COLOR_TRANSPARENT);
+    render_text_block(rd, "Név", 100, 100, COLOR_TRANSPARENT);
+    render_text_block(rd, "Táblaméret", 1200, 100, COLOR_TRANSPARENT);
 
-    // TODO ez lehet felesleges, csak első eventig?
     SDL_Color point_color = COLOR_BLACK;
     SDL_Color chain_color = COLOR_BLACK;
     SDL_Color pieces_color = COLOR_BLACK;
@@ -90,15 +88,9 @@ void render_buttons(CommonRenderData rd, int sorted_by) {
     render_text_block(rd, "Részek", 1000, 100, pieces_color);
 }
 
-// TODO ugyan az a név mint a settings loopból
-void starting_render(CommonRenderData rd) {
-    // TODO koordinátákkal
-    boxRGBA(rd.renderer, 0, 0, 1600, 1000, 255, 255, 255, 255);
-}
-
 // újrarajzolja a kiválasztás szerint a címkét, és beállítja, hogy rajta van-e az egér
 // visszaadja, rajzolt-e
-bool rerender_label(CommonRenderData rd, char *label, int x, int y, bool *selected, bool in) {
+static bool rerender_label(CommonRenderData rd, char *label, int x, int y, bool *selected, bool in) {
     if (*selected != in) {
         if (in)
             render_text_block(rd, label, x, y, COLOR_RED);
@@ -111,18 +103,28 @@ bool rerender_label(CommonRenderData rd, char *label, int x, int y, bool *select
     return false;
 }
 
-bool sort_entries(Entries entries, int sorted_ids[3][10]) {
+// szortírozza az elemeket mindhárom szempont alapján, és elmenti a sorted_ids-be
+// 0: pontszám, 1: leghosszabb lánc, 2: lerakott részek
+// visszaadja, hogy sikeres volt-e a szortírozás
+static bool sort_entries(Entries entries, int sorted_ids[3][SHOWN_NAMES]) {
     // kimenet nullázása
     for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 10; j++) {
+        for (int j = 0; j < SHOWN_NAMES; j++) {
             sorted_ids[i][j] = -1;
         }
     }
 
+    // ha nincs mit szortírozni, azonnal visszatér üres kimenettel
+    if (entries.len == 0) {
+        printf("sort_entries: ures scores.txt, nincs szortirozas\n");
+        return true;
+    }
+
     // ide kerül mind a három fajta szortírozás
-    // egy-egy részeredmény első 10 eleme pedig átmásolódik a sorted_ids-be
+    // egy-egy részeredményből annyi átkerül sorted_ids[]-be, amennyi kifér a képernyőre
     int *temp_sort = (int *)malloc(entries.len * sizeof(int));
     if (temp_sort == NULL) {
+        printf("sort_entries: memoriafoglalasi hiba\n");
         return false;
     }
 
@@ -131,7 +133,7 @@ bool sort_entries(Entries entries, int sorted_ids[3][10]) {
         temp_sort[i] = i;
     }
 
-    // növekvő sorrendbe rendezés
+    // növekvő sorrendbe rendezések buborékrendezéssel
 
     // pontszám
     for (int i = 0; i < entries.len; i++) {
@@ -146,7 +148,7 @@ bool sort_entries(Entries entries, int sorted_ids[3][10]) {
         }
     }
     // átmásolás a kimenetbe
-    for (int i = 0; i < entries.len && i < 10; i++) {
+    for (int i = 0; i < entries.len && i < SHOWN_NAMES; i++) {
         sorted_ids[0][i] = temp_sort[i];
     }
 
@@ -163,7 +165,7 @@ bool sort_entries(Entries entries, int sorted_ids[3][10]) {
         }
     }
     // átmásolás a kimenetbe
-    for (int i = 0; i < entries.len && i < 10; i++) {
+    for (int i = 0; i < entries.len && i < SHOWN_NAMES; i++) {
         sorted_ids[1][i] = temp_sort[i];
     }
 
@@ -180,18 +182,18 @@ bool sort_entries(Entries entries, int sorted_ids[3][10]) {
         }
     }
     // átmásolás a kimenetbe
-    for (int i = 0; i < entries.len && i < 10; i++) {
+    for (int i = 0; i < entries.len && i < SHOWN_NAMES; i++) {
         sorted_ids[2][i] = temp_sort[i];
     }
+
+    free(temp_sort);
     return true;
 }
 int leaderboard_loop(SDL_Renderer *renderer, TTF_Font *font) {
-    // csak ezt a kettőt használja
+    // nem fogja használni, csak a renderer és font változókat
     CommonRenderData rd;
     rd.renderer = renderer;
     rd.font = font;
-
-    starting_render(rd);
 
     Entries entries = new_entries();
 
@@ -200,22 +202,28 @@ int leaderboard_loop(SDL_Renderer *renderer, TTF_Font *font) {
 
     int sorted_by = 0;
 
-    // sorted_ids[0]-ban a sorted_by = 0-hoz tartozó adat szerinti szortírozás sorrendje van (0-nál pontszám)
-    int sorted_ids[3][10];
+    // mindhárom szortírozás szerinti sorrend
+    int sorted_ids[3][SHOWN_NAMES];
 
-    sort_entries(entries, sorted_ids);
+    success = sort_entries(entries, sorted_ids);
+    if (!success) {
+        return -1;
+    }
 
+    // első képernyő kirajzolása
+    boxRGBA(renderer, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 255, 255, 255, 255);
     render_entries(rd, entries, sorted_ids[sorted_by]);
     render_buttons(rd, sorted_by);
 
-    // TODO ez nem biztos hogy kell
     SDL_RenderPresent(renderer);
 
+    // gombok ki vannak-e választva
     bool selected_score = false;
     bool selected_chain = false;
     bool selected_pieces = false;
     bool selected_back = false;
 
+    // bal egérgomb le van-e nyomva
     bool held_left = false;
 
     bool quit = false;
@@ -226,14 +234,14 @@ int leaderboard_loop(SDL_Renderer *renderer, TTF_Font *font) {
         switch (event.type) {
             case SDL_KEYDOWN:
                 if (event.key.keysym.sym == SDLK_ESCAPE) {
-                    // vissza a főmenübe
+                    // ESC-re visszalép a játékképernyőre
                     return_code = 1;
                     quit = true;
                 }
 
                 break;
             case SDL_MOUSEMOTION: {
-                // ha az egér az egyik gombon van, a keret pirosra színezése int x = event.motion.x;
+                // ha az egér az egyik gombon van, a keret pirosra színezése
                 int x = event.motion.x;
                 int y = event.motion.y;
 
@@ -270,6 +278,7 @@ int leaderboard_loop(SDL_Renderer *renderer, TTF_Font *font) {
                 break;
             }
             case SDL_MOUSEBUTTONDOWN:
+                // bal egérgombbal gombok kattintása
                 if (event.button.button == SDL_BUTTON_LEFT && !held_left) {
                     held_left = true;
                     int x = event.motion.x;
@@ -281,10 +290,12 @@ int leaderboard_loop(SDL_Renderer *renderer, TTF_Font *font) {
                     bool in_chain = 800 <= x && x <= 944 && in_y_range;
                     bool in_pieces = 1000 <= x && x <= 1108 && in_y_range;
                     bool in_back = (25 <= x && x <= 75) && (25 <= y && y <= 75);
+
                     // kattintásra a szortírozási preferencia változik
                     if (in_score) sorted_by = 0;
                     if (in_chain) sorted_by = 1;
                     if (in_pieces) sorted_by = 2;
+                    // kilépés vissza gombbal
                     if (in_back) {
                         return_code = 1;
                         quit = true;
@@ -305,11 +316,11 @@ int leaderboard_loop(SDL_Renderer *renderer, TTF_Font *font) {
                     held_left = false;
                 break;
             case SDL_QUIT:
+                // kilépés X gombbal
                 quit = true;
                 return_code = 0;
                 break;
             default:
-                // TODO
                 break;
         }
         if (draw) SDL_RenderPresent(renderer);

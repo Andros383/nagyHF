@@ -1,24 +1,11 @@
 #include "database.h"
 
-#include "game_screen.h"
-#include "stdbool.h"
-#include "stdio.h"
-#include "stdlib.h"
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-// TODO kivenni, meg static
-void print_entry(Entry e) {
-    printf("%s\t%d\t%d\t%d\t%d\t%d", e.name, e.score_data.score, e.score_data.longest_chain, e.score_data.placed_pieces, e.width, e.height);
-}
-
-// kiírja a tömböt
-// TODO kivenni?
-void debug_entries(Entries entries) {
-    printf("Entries len: %d\n", entries.len);
-    for (int i = 0; i < entries.len; i++) {
-        print_entry(entries.array[i]);
-        printf("\n");
-    }
-}
+#include "debugmalloc.h"
+#include "menu_selector.h"
 
 // Visszaad egy üres entries típust
 Entries new_entries() {
@@ -33,7 +20,7 @@ static bool write_entries(Entries entries) {
     FILE* fp = fopen("scores.txt", "w");
 
     if (fp == NULL) {
-        printf("File megnyitasa sikertelen.\n");
+        printf("write_entries: file megnyitasa sikertelen\n");
         return false;
     }
 
@@ -46,12 +33,13 @@ static bool write_entries(Entries entries) {
     return true;
 }
 
-// hozzáad egy pontszámot a arraya végéhez
+// hozzáad egy pontszámot az entries végéhez
 // hamisat ad vissza, ha hiba történt
 static bool add_entry(Entries* entries, Entry new_entry) {
     Entry* new_array = (Entry*)malloc((entries->len + 1) * sizeof(Entry));
 
     if (new_array == NULL) {
+        printf("add_entry: sikertelen memoriafoglalas\n");
         // ne is lehessen használni
         return false;
     }
@@ -69,13 +57,13 @@ static bool add_entry(Entries* entries, Entry new_entry) {
     return true;
 }
 
-// beolvassa a scores.txt-ből a pontszámokat, és beleírja a kapott paraméterbe
-// használat után fel kell szabadítani az entries.array-et
+// beolvassa a scores.txt-ből a pontszámokat, és beleírja a kapott entries-be
 // hamisat ad vissza, ha hiba történt
+// elméletben nem történhet hiba, mert ha nem talál fájlt entries-t ad vissza
 bool read_entries(Entries* entries) {
-    // TODO Ha nem találja? Így elméletben nem tud hibázni
     FILE* fp = fopen("scores.txt", "r");
     if (fp == NULL) {
+        printf("read_entries(): scores.txt nem talalhato, feltehetoen nem volt elmentett eredmeny\n");
         // nincs még fájl, visszaad egy üres array-t
         entries->len = 0;
         entries->array = NULL;
@@ -91,22 +79,24 @@ bool read_entries(Entries* entries) {
         // ha az első karatker EOF, akkor vége a fájlnak, kilép a ciklusból
         if (fscanf(fp, "%c", &c) == EOF) break;
 
-        // innentől nem kell nézni az EOF-eket, mert feltételezzük, hogy helyes a file
+        // innentől nem kell nézni az EOF-eket, mert a program nem vállalkozik helytelen fájlok kezelésére
 
+        // név beolvasása, karakterenként, mert lehet benne szóköz is
         while (c != '\t') {
             current_entry.name[index] = c;
             index++;
             fscanf(fp, "%c", &c);
         }
-
         current_entry.name[index] = '\0';
 
+        // többi adat beolvasása
         fscanf(fp, "%d", &current_entry.score_data.score);
         fscanf(fp, "%d", &current_entry.score_data.longest_chain);
         fscanf(fp, "%d", &current_entry.score_data.placed_pieces);
         fscanf(fp, "%d", &current_entry.width);
         fscanf(fp, "%d", &current_entry.height);
 
+        // beolvasott eredmény hozzáadása az entries-hez
         bool success = add_entry(entries, current_entry);
         if (!success) return false;
 
@@ -118,7 +108,7 @@ bool read_entries(Entries* entries) {
     return true;
 }
 
-// az adatbázishoz hozzáad egy elemet, ha ilyen nevű még nem szerepelt
+// a scores.txt-hez hozzáad egy elemet, ha ilyen nevű még nem szerepelt
 // ha szerepelt, felülírja a pontszámát
 // hamisat ad vissza, ha hiba történt
 bool insert_entry(Entry new_entry) {

@@ -1,15 +1,16 @@
 #ifndef DATABASE_H
 #define DATABASE_H
 
-#include "game_screen.h"
-#include "stdbool.h"
-#include "stdio.h"
-#include "stdlib.h"
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "menu_selector.h"
+#include "sdl_setup.h"
 
 // eltárolja egy játékmenetről elmentett információkat
 typedef struct Entry {
-    char name[50 + 1];
-    // TODO rövidebb? vagy megoldani ...-al
+    char name[MAX_NAME_LEN];
     ScoreData score_data;
     int width, height;
 } Entry;
@@ -22,6 +23,5 @@ typedef struct Entries {
 
 bool read_entries(Entries* array);
 bool insert_entry(Entry new_entry);
-void debug_entries(Entries entries);
 Entries new_entries();
 #endif

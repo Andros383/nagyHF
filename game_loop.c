@@ -205,24 +205,49 @@ static int pop_groups(CommonRenderData rd, GameState *game_state, int chain_leng
 
     return pop ? 1 : 0;
 }
-// az összes blokkot leejti a tábla aljára
-static void gravity(GameState *game_state) {
+// minden rész ami alatt üres hely van (vagy alatta lévő is lefelé esik) lemozog egyet
+// visszaadja, történt-e gravitációs lépés
+static bool gravity_step(GameState *game_state) {
+    // mivel lentről felfelé keres mindent le fog dobni eggyel
+
+    bool grav_happened = false;
+
     // oszloponként végigmenve
     for (int x = 0; x < game_state->board_width; x++) {
         // lentről felfelé
         for (int y = 1; y < game_state->board_height; y++) {
             // ha talál egy blokkot ami alatt üres hely van
             if (game_state->board[x][y - 1] == EMPTY && game_state->board[x][y] != EMPTY) {
-                // megkeresi a legalacsonyabb üres helyet, és ledobja oda
-                for (int search_y = 0; search_y < game_state->board_height; search_y++) {
-                    if (game_state->board[x][search_y] == EMPTY) {
-                        game_state->board[x][search_y] = game_state->board[x][y];
-                        game_state->board[x][y] = EMPTY;
-                    }
-                }
+                // eggyel lejjebb dobja
+                game_state->board[x][y - 1] = game_state->board[x][y];
+                game_state->board[x][y] = EMPTY;
+                grav_happened = true;
             }
         }
     }
+    return grav_happened;
+}
+
+// az összes blokkot leejti a tábla aljára
+// ezt lépésenként teszi, azaz minden egyessével mozog lefelé
+static void gravity(CommonRenderData rd, GameState *game_state) {
+    // bemenetek lefagyaszátasa animáció alatt
+    SDL_Event lock_input_event;
+    lock_input_event.type = SDL_USEREVENT + 1;
+    SDL_PushEvent(&lock_input_event);
+
+    // wacky módon de renderel
+    render_game(rd, game_state);
+    while (gravity_step(game_state)) {
+        SDL_Delay(100);
+        render_game(rd, game_state);
+    }
+
+    // be kell hozni a billentyűzet eventjeit, különben az event be és kikapcsolása nem hatna rájuk
+    SDL_PumpEvents();
+    // gravitáció visszakapcsolása
+    lock_input_event.type = SDL_USEREVENT + 2;
+    SDL_PushEvent(&lock_input_event);
 }
 
 // ténylegesen a táblára helyezi az aktív részt, majd rendezi a táblát (gravitáció, csoporttörlések)
@@ -248,7 +273,7 @@ static int lock_active_piece(CommonRenderData rd, GameState *game_state, int *na
     game_state->active_piece.y2 = -1;
 
     // tábla rendezése
-    gravity(game_state);
+    gravity(rd, game_state);
     render_game(rd, game_state);
 
     // Csoportok törlése több lépésben
@@ -280,7 +305,7 @@ static int lock_active_piece(CommonRenderData rd, GameState *game_state, int *na
         game_state->score_data.score += added_score;
 
         // gravitációval rendezés
-        gravity(game_state);
+        gravity(rd, game_state);
         render_board(rd, game_state->board);
 
         // következő lánclépésre a csoportok törlése

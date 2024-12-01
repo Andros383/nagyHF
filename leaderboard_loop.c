@@ -200,6 +200,7 @@ int leaderboard_loop(SDL_Renderer *renderer, TTF_Font *font) {
     bool success = read_entries(&entries);
     if (!success) return -1;
 
+    // melyik statisztika alapján szortírozzon
     int sorted_by = 0;
 
     // mindhárom szortírozás szerinti sorrend

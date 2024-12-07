@@ -2,3 +2,8 @@ SDL2.dll
 src/*
 *.exe
 Makefile
+main.exe
+log.txt
+debugmalloc_log.txt
+.vscode
+TODO.md

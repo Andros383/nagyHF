@@ -1,4 +1,0 @@
-****************************************************
-* Debugmalloc: nincs memoriaszivargas a programban.
-* Osszes foglalas: 7 blokk, 336 bajt.
-****************************************************
